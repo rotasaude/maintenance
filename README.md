@@ -1,0 +1,86 @@
+# Rota Saúde — Manutenção
+
+Frontend da API de manutenção (superusuário, GraphQL + sessão REST). Vite +
+React + React Query, no mesmo molde dos outros frontends do monorepo
+(`apps/dashboard`, `apps/admin`, `apps/wpda`).
+
+## Subir em dev
+
+O app roda como o serviço `maintenance` no `docker-compose.yml` da raiz do
+monorepo (ao lado de `admin`, `dashboard` e `wpda`):
+
+```bash
+docker compose up -d maintenance
+```
+
+Abre em **http://maintenance.localhost:5177**. Em desenvolvimento, o Vite
+propaga `/graphql`, `/session`, `/invitations/enroll` e
+`/invitations/accept` para o `api` (porta 3030), trocando o `Host` para
+`maintenance-api.localhost` — é o único rótulo de host que a rota de
+manutenção do Rails reconhece. Veja os comentários de `vite.config.ts` para
+o porquê do `Host` trocado e do `Origin` só injetado quando a requisição
+chega sem ele (GET same-origin não manda `Origin` no navegador).
+
+### As duas variáveis de ambiente que o api precisa
+
+O app só funciona se o `api` estiver com:
+
+```
+MAINTENANCE_API_ENABLED=true
+MAINTENANCE_FRONTEND_ORIGIN=http://maintenance.localhost:5177
+```
+
+Essas duas linhas já estão como default no `docker-compose.yml` da raiz
+(fora do git). Se você mudar qualquer uma delas, **recrie o container do
+api** (`docker compose up -d --force-recreate api`) — variável nova no
+compose não chega a um container já rodando — e confira com:
+
+```bash
+docker exec api-dev printenv | grep MAINTENANCE
+```
+
+## Convidar o primeiro mantenedor
+
+```bash
+docker compose exec api bin/rails "maintainer:invite[email@exemplo.com]"
+```
+
+O comando imprime `[maintainer:invite] <MAINTENANCE_FRONTEND_ORIGIN>/invitations#<token>`.
+Abra esse link no navegador para completar o cadastro (TOTP).
+
+## Schema e codegen
+
+```bash
+npm run schema:pull   # roda a partir da raiz do monorepo
+npm run codegen
+```
+
+## Testes
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+### E2E
+
+```bash
+npm run e2e
+```
+
+Roda no host (Playwright), contra o stack de dev, não no container. Cada
+código TOTP só é aceito uma vez (`last_otp_step`): login e step-up dentro do
+mesmo passo de 30s são recusados, então a suíte espera o próximo passo entre
+usos — fica mais lenta (~2 min), mas é o comportamento real que o usuário
+vai ter.
+
+## Staging
+
+```
+VITE_MAINTENANCE_ENV=staging
+VITE_MAINTENANCE_API_URL=https://<host-da-api-de-manutenção>
+```
+
+Em staging a origem é diferente da API (CORS, não proxy), então o navegador
+manda `Origin` normalmente — nada de host trocado.
