@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -15,6 +16,8 @@ vi.mock("qrcode", () => ({
 }));
 
 const TOKEN = "convite-secreto-abc123";
+const DONE_MESSAGE = "Matrícula concluída. Entre com sua senha e o código do autenticador.";
+const GENERIC_MESSAGE = "não foi possível concluir o convite — tente de novo";
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -69,7 +72,20 @@ describe("Invitation", () => {
     expect(JSON.parse((init as RequestInit).body as string)).toEqual({ token: TOKEN });
   });
 
-  it("com senha, confirmação e código válidos, aceita o convite e chama onDone", async () => {
+  it("sob StrictMode (mount→cleanup→mount), matricula só UMA vez — o endpoint rotaciona o segredo a cada chamada", async () => {
+    fetchMock.mockResolvedValueOnce(enrollReply());
+
+    render(
+      <StrictMode>
+        <Invitation token={TOKEN} onDone={onDone} />
+      </StrictMode>
+    );
+
+    expect(await screen.findByText("novo@rotasaude.app")).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("com senha, confirmação e código válidos, aceita o convite e chama onDone com a mensagem de sucesso", async () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValueOnce(enrollReply());
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
@@ -79,7 +95,7 @@ describe("Invitation", () => {
 
     await fillAcceptForm(user);
 
-    await waitFor(() => expect(onDone).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith(DONE_MESSAGE));
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [ url, init ] = fetchMock.mock.calls[1];
@@ -154,6 +170,38 @@ describe("Invitation", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe("convite inválido, usado ou expirado");
     expect(screen.queryByLabelText("Senha")).toBeNull();
+  });
+
+  it("accept com 404 mostra 'convite inválido, usado ou expirado', nunca o código cru", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(enrollReply());
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 404 }));
+
+    render(<Invitation token={TOKEN} onDone={onDone} />);
+    await screen.findByText("novo@rotasaude.app");
+
+    await fillAcceptForm(user);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("convite inválido, usado ou expirado");
+    expect(alert.textContent).not.toContain("http_404");
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("um erro da API sem mapeamento mostra a mensagem genérica, nunca o código cru", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(enrollReply());
+    fetchMock.mockResolvedValueOnce(reply(422, { error: "some_unmapped_code" }));
+
+    render(<Invitation token={TOKEN} onDone={onDone} />);
+    await screen.findByText("novo@rotasaude.app");
+
+    await fillAcceptForm(user);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(GENERIC_MESSAGE);
+    expect(alert.textContent).not.toContain("some_unmapped_code");
+    expect(onDone).not.toHaveBeenCalled();
   });
 
   it("o token nunca aparece no DOM", async () => {

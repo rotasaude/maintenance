@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { toDataURL } from "qrcode";
 import { rest } from "../lib/api";
 import { RequestRejected } from "../lib/errors";
@@ -19,7 +19,32 @@ const INVALID_INVITATION_MESSAGE = "convite inválido, usado ou expirado";
 const MISMATCH_MESSAGE = "as senhas não coincidem";
 const DONE_MESSAGE = "Matrícula concluída. Entre com sua senha e o código do autenticador.";
 
-export function Invitation({ token, onDone }: { token: string; onDone(): void }) {
+// Fix round 1 (ruling P4): nenhuma tela mostra o `code` cru de um
+// RequestRejected — ele é uma palavra de máquina (`http_404`,
+// `weak_password`...), não uma frase para o mantenedor ler. Todo código
+// conhecido tem sua mensagem aqui; o que não está no mapa cai na mensagem
+// genérica, nunca no `.message` do erro (que É o código, veja
+// src/lib/errors.ts). Erros que NÃO são RequestRejected (NetworkError,
+// RateLimited...) já têm uma mensagem em português pronta para leitura —
+// esses usam `.message` normalmente.
+const REQUEST_MESSAGES: Record<string, string> = {
+  http_404: INVALID_INVITATION_MESSAGE,
+  weak_password: WEAK_PASSWORD_MESSAGE,
+  invalid_code: INVALID_CODE_MESSAGE
+};
+const GENERIC_MESSAGE = "não foi possível concluir o convite — tente de novo";
+
+function messageFor(err: unknown): string {
+  if (err instanceof RequestRejected) return REQUEST_MESSAGES[err.code] ?? GENERIC_MESSAGE;
+  if (err instanceof Error) return err.message;
+  return GENERIC_MESSAGE;
+}
+
+// Fix round 1 (ruling P4): `onDone` carrega a mensagem de sucesso — quem
+// mostra é a tela de entrar (App passa como `notice` do Login), não esta
+// tela: `setDone` seguido de `onDone()` no mesmo lote nunca chegava a
+// pintar nada, porque o pai já desmontava `Invitation` antes do commit.
+export function Invitation({ token, onDone }: { token: string; onDone(message: string): void }) {
   const [ enrollment, setEnrollment ] = useState<EnrollPayload | null>(null);
   const [ qrDataUrl, setQrDataUrl ] = useState<string | null>(null);
   const [ loadError, setLoadError ] = useState<string | null>(null);
@@ -28,21 +53,47 @@ export function Invitation({ token, onDone }: { token: string; onDone(): void })
   const [ confirmPassword, setConfirmPassword ] = useState("");
   const [ code, setCode ] = useState("");
   const [ formError, setFormError ] = useState<string | null>(null);
-  const [ done, setDone ] = useState(false);
   const [ busy, setBusy ] = useState(false);
+
+  // Fix round 1 (achado durante a verificação manual do StrictMode): o
+  // `alive` sozinho evita um SETSTATE indevido de um efeito já descartado,
+  // mas não evita a SEGUNDA CHAMADA de rede em si — e /invitations/enroll
+  // ROTACIONA o otp_secret do mantenedor a cada chamada (ver o controller).
+  // Sob StrictMode (mount → cleanup → mount), duas chamadas reais saem, e
+  // qual das duas grava por último no banco depende da ordem de resposta
+  // do servidor — não necessariamente a mesma que a UI acaba mostrando.
+  // Verificado ao vivo: a UI mostrou um secret que não era mais o do banco,
+  // e o código gerado a partir dele foi recusado como inválido.
+  //
+  // Uma primeira tentativa guardou só "já pedi esse token" num ref e pulava
+  // o efeito inteiro na segunda invocação — e quebrou: a PRIMEIRA invocação
+  // (a que faz o fetch) tem seu `alive` derrubado pela PRÓPRIA limpeza
+  // antes da resposta chegar, e a segunda invocação (a que sobrevive) não
+  // tinha feito fetch nenhum para aplicar. Ninguém nunca aplicava o
+  // resultado. A correção: o REF guarda a PROMISE em voo, não só um sinal —
+  // toda invocação do efeito (a descartada e a sobrevivente) espera a MESMA
+  // promise e aplica o resultado se ainda estiver viva; só quem cria a
+  // promise (a primeira) de fato chama `rest(...)`/`fetch`.
+  const enrollRequestRef = useRef<{ token: string; promise: Promise<EnrollPayload> } | null>(null);
 
   useEffect(() => {
     let alive = true;
+
+    if (enrollRequestRef.current?.token !== token) {
+      enrollRequestRef.current = { token, promise: rest<EnrollPayload>("POST", "/invitations/enroll", { token }) };
+    }
+    const { promise } = enrollRequestRef.current;
+
     (async () => {
       try {
-        const payload = await rest<EnrollPayload>("POST", "/invitations/enroll", { token });
+        const payload = await promise;
         const dataUrl = await toDataURL(payload.otpauth_uri);
         if (!alive) return;
         setEnrollment(payload);
         setQrDataUrl(dataUrl);
       } catch (err) {
         if (!alive) return;
-        setLoadError(err instanceof RequestRejected ? INVALID_INVITATION_MESSAGE : (err as Error).message);
+        setLoadError(messageFor(err));
       }
     })();
     return () => { alive = false; };
@@ -58,12 +109,9 @@ export function Invitation({ token, onDone }: { token: string; onDone(): void })
     setBusy(true);
     try {
       await rest("POST", "/invitations/accept", { token, password, code });
-      setDone(true);
-      onDone();
+      onDone(DONE_MESSAGE);
     } catch (err) {
-      if (err instanceof RequestRejected && err.code === "weak_password") setFormError(WEAK_PASSWORD_MESSAGE);
-      else if (err instanceof RequestRejected && err.code === "invalid_code") setFormError(INVALID_CODE_MESSAGE);
-      else setFormError((err as Error).message);
+      setFormError(messageFor(err));
     } finally {
       setBusy(false);
     }
@@ -89,7 +137,6 @@ export function Invitation({ token, onDone }: { token: string; onDone(): void })
         Não conseguiu ler o QR? Cadastre a chave manualmente: <code>{enrollment.secret}</code>
       </p>
 
-      {done && <p role="status">{DONE_MESSAGE}</p>}
       {formError && <ErrorState message={formError} />}
 
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
