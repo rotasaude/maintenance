@@ -114,12 +114,26 @@ export function Tokens() {
       const payload = result.data?.createMaintenanceToken;
 
       if (payload?.ok && payload.secretOnce) {
-        // O segredo sai da resposta da mutation e entra SÓ no estado local
-        // do painel — nunca fica no cache do react-query. reset() zera o
-        // estado do hook na hora; a remoção explícita da mutation do
-        // MutationCache é o reforço pedido pela brief: reset() por si só
-        // não garante que a instância de Mutation (que guarda `state.data`
-        // com o secretOnce) já tenha sumido do cache no mesmo tick.
+        // T8 (correção de comentário — o motivo anterior estava errado): o
+        // react-query chama ESTE onSuccess ANTES de despachar 'success' para
+        // a Mutation (o dispatch que grava `state.data`, com o secretOnce, e
+        // `state.variables`, com o code) — não depois. `clearCreateMutationFromCache()`
+        // abaixo remove a Mutation do MutationCache AQUI DENTRO, então o
+        // dispatch de 'success' que viria a seguir não tem mais instância
+        // nenhuma para gravar: o segredo NUNCA chega a existir em
+        // `state.data`, nem por um tick — não é reset() limpando algo que já
+        // esteve lá. reset() sozinho não bastaria: ele só zera o estado
+        // local do HOOK, e não impede a Mutation (o objeto do
+        // MutationCache) de guardar o dado internamente.
+        //
+        // AVISO: por isso, nunca ligue o React Query Devtools nem assine o
+        // MutationCache (`queryClient.getMutationCache().subscribe(...)`)
+        // nesta app. Uma Mutation removida do cache ainda DESPACHA e
+        // NOTIFICA quem já a observava — devtools e um subscriber próprio se
+        // inscrevem irrestritamente em toda mutation, e veriam o secretOnce
+        // (e o code) passar pelo dispatch de 'success' mesmo depois da
+        // remoção, que só tira a Mutation do `findAll()`, não da lista de
+        // observadores que já tinha.
         setSecretPanel({ name: vars.name, secretOnce: payload.secretOnce });
         setCreateFormError(null);
         setCreateFieldErrors([]);
