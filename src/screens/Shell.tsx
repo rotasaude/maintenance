@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useSession } from "../lib/session";
 import { Button } from "../components/Button";
-import { EmptyState } from "../components/EmptyState";
 import { Cities } from "./Cities";
 import { CityDetail } from "./CityDetail";
 import { Maintainers } from "./Maintainers";
+import { Tokens } from "./Tokens";
 import { Audit } from "./Audit";
 
 // Casca do mantenedor logado (Task 6): cabeçalho com e-mail e navegação,
-// corpo com a tela ativa. Mantenedores (Task 7) e Auditoria (Task 9) já
-// existem; Tokens chega na Task 8 — até lá, "em breve".
+// corpo com a tela ativa. Mantenedores (Task 7), Tokens (Task 8) e
+// Auditoria (Task 9) já existem.
 export type Screen = "cities" | "maintainers" | "tokens" | "audit";
 
 const NAV: { key: Screen; label: string }[] = [
@@ -75,7 +75,7 @@ export function Shell() {
             : <Cities onOpen={(slug) => setOpenCity(slug)} />
         )}
         {screen === "maintainers" && <Maintainers />}
-        {screen === "tokens" && <EmptyState message="em breve" />}
+        {screen === "tokens" && <Tokens />}
         {screen === "audit" && <Audit />}
       </main>
     </div>

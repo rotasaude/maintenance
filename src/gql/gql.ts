@@ -27,6 +27,10 @@ type Documents = {
     "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n": typeof types.CityOperationsDocument,
     "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": typeof types.InviteMaintainerDocument,
     "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": typeof types.DeactivateMaintainerDocument,
+    "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n": typeof types.MaintenanceTokensDocument,
+    "\n  query CitiesForTokenScope { cities { slug name } }\n": typeof types.CitiesForTokenScopeDocument,
+    "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n": typeof types.CreateMaintenanceTokenDocument,
+    "\n  mutation RevokeMaintenanceToken($id: ID!) { revokeMaintenanceToken(id: $id) { ok errors { path message } } }\n": typeof types.RevokeMaintenanceTokenDocument,
 };
 const documents: Documents = {
     "query Me { me { id emailAddress } }": types.MeDocument,
@@ -42,6 +46,10 @@ const documents: Documents = {
     "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n": types.CityOperationsDocument,
     "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": types.InviteMaintainerDocument,
     "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": types.DeactivateMaintainerDocument,
+    "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n": types.MaintenanceTokensDocument,
+    "\n  query CitiesForTokenScope { cities { slug name } }\n": types.CitiesForTokenScopeDocument,
+    "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n": types.CreateMaintenanceTokenDocument,
+    "\n  mutation RevokeMaintenanceToken($id: ID!) { revokeMaintenanceToken(id: $id) { ok errors { path message } } }\n": types.RevokeMaintenanceTokenDocument,
 };
 
 /**
@@ -110,6 +118,22 @@ export function graphql(source: "\n  mutation InviteMaintainer($emailAddress: St
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"): (typeof documents)["\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n"): (typeof documents)["\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CitiesForTokenScope { cities { slug name } }\n"): (typeof documents)["\n  query CitiesForTokenScope { cities { slug name } }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n"): (typeof documents)["\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RevokeMaintenanceToken($id: ID!) { revokeMaintenanceToken(id: $id) { ok errors { path message } } }\n"): (typeof documents)["\n  mutation RevokeMaintenanceToken($id: ID!) { revokeMaintenanceToken(id: $id) { ok errors { path message } } }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};
