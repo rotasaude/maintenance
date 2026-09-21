@@ -53,6 +53,7 @@ const MAX_VALIDITY_DAYS = 90;
 const NO_SCOPE_WARNING = "sem cidades marcadas, o token alcança todas";
 const SECRET_NOTICE = "Este segredo não será mostrado de novo.";
 const GENERIC_ERROR = "não foi possível concluir — tente de novo";
+const COPY_ERROR = "não foi possível copiar — copie manualmente";
 const VALIDITY_RANGE_ERROR = `a validade deve ser de ${MIN_VALIDITY_DAYS} a ${MAX_VALIDITY_DAYS} dias`;
 
 // A mutation de criação carrega o segredo pela viagem de volta — uma
@@ -97,6 +98,7 @@ export function Tokens() {
   const [ createFormError, setCreateFormError ] = useState<string | null>(null);
   const [ createFieldErrors, setCreateFieldErrors ] = useState<FieldError[]>([]);
   const [ secretPanel, setSecretPanel ] = useState<SecretPanelState | null>(null);
+  const [ copyError, setCopyError ] = useState<string | null>(null);
 
   function toggleSlug(slug: string) {
     setSelectedSlugs((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [ ...prev, slug ]));
@@ -135,6 +137,7 @@ export function Tokens() {
         // remoção, que só tira a Mutation do `findAll()`, não da lista de
         // observadores que já tinha.
         setSecretPanel({ name: vars.name, secretOnce: payload.secretOnce });
+        setCopyError(null);
         setCreateFormError(null);
         setCreateFieldErrors([]);
         setName("");
@@ -198,10 +201,21 @@ export function Tokens() {
 
   function closeSecretPanel() {
     setSecretPanel(null);
+    setCopyError(null);
   }
 
-  function copySecret() {
-    if (secretPanel) void navigator.clipboard.writeText(secretPanel.secretOnce);
+  // Clipboard: `navigator.clipboard` pode nem existir (contexto não
+  // seguro, navegador antigo) e `writeText` pode rejeitar (permissão
+  // negada) — os dois casos têm de avisar, nunca parecer que copiou.
+  async function copySecret() {
+    if (!secretPanel) return;
+    setCopyError(null);
+    try {
+      if (!navigator.clipboard) throw new Error("clipboard indisponível");
+      await navigator.clipboard.writeText(secretPanel.secretOnce);
+    } catch {
+      setCopyError(COPY_ERROR);
+    }
   }
 
   const [ revokeErrors, setRevokeErrors ] = useState<Record<string, string>>({});
@@ -302,8 +316,9 @@ export function Tokens() {
             {secretPanel.secretOnce}
           </p>
           <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--down)" }}>{SECRET_NOTICE}</p>
+          {copyError && <ErrorState message={copyError} />}
           <div style={{ display: "flex", gap: 8 }}>
-            <Button onClick={copySecret}>copiar</Button>
+            <Button onClick={() => void copySecret()}>copiar</Button>
             <Button onClick={closeSecretPanel}>fechei</Button>
           </div>
         </Panel>

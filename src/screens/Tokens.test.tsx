@@ -312,6 +312,80 @@ describe("Tokens", () => {
 
   // I3: um 500 na lista de tokens não pode devolver o código cru (http_500)
   // — a tela só mostra `.message`, e ele tem de ser genérico.
+  // Clipboard: navigator.clipboard.writeText pode rejeitar (permissão
+  // negada, contexto não seguro...) — sem tratamento, o clique em "copiar"
+  // parece ter funcionado mesmo tendo falhado. Precisa avisar, não fingir
+  // sucesso.
+  it("clipboard.writeText rejeitando mostra 'não foi possível copiar — copie manualmente'", async () => {
+    stubDefault([], []);
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(sessionReply());
+      if (path === "/graphql") {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation CreateMaintenanceToken")) {
+          return Promise.resolve(reply(200, {
+            data: { createMaintenanceToken: { ok: true, secretOnce: "shh-secret-value", errors: [] } }
+          }));
+        }
+        if (body.query.includes("query CitiesForTokenScope")) return Promise.resolve(citiesReply([]));
+        return Promise.resolve(tokensReply([]));
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+
+    renderTokens();
+    await screen.findByText("nenhum token");
+
+    await user.type(screen.getByLabelText("Nome"), "grafana");
+    await user.type(screen.getByLabelText("Código"), "123456");
+    await user.click(screen.getByRole("button", { name: "criar token" }));
+    await screen.findByText("shh-secret-value");
+
+    await user.click(screen.getByRole("button", { name: "copiar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("não foi possível copiar — copie manualmente");
+  });
+
+  // navigator.clipboard pode nem existir (contexto HTTP, navegador antigo).
+  it("navigator.clipboard indefinido mostra o mesmo aviso, sem estourar", async () => {
+    stubDefault([], []);
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(sessionReply());
+      if (path === "/graphql") {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation CreateMaintenanceToken")) {
+          return Promise.resolve(reply(200, {
+            data: { createMaintenanceToken: { ok: true, secretOnce: "shh-secret-value", errors: [] } }
+          }));
+        }
+        if (body.query.includes("query CitiesForTokenScope")) return Promise.resolve(citiesReply([]));
+        return Promise.resolve(tokensReply([]));
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+
+    renderTokens();
+    await screen.findByText("nenhum token");
+
+    await user.type(screen.getByLabelText("Nome"), "grafana");
+    await user.type(screen.getByLabelText("Código"), "123456");
+    await user.click(screen.getByRole("button", { name: "criar token" }));
+    await screen.findByText("shh-secret-value");
+
+    await user.click(screen.getByRole("button", { name: "copiar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("não foi possível copiar — copie manualmente");
+  });
+
   // I4/spec §5: o campo "código" de criação de token precisa dos mesmos
   // dois avisos de step-up que Maintainers já mostra — que o código pedido
   // agora mesmo pode ainda não valer, e que um código errado conta para o
