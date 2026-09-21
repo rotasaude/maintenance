@@ -309,4 +309,25 @@ describe("Tokens", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe("nome já usado");
   });
+
+  // I3: um 500 na lista de tokens não pode devolver o código cru (http_500)
+  // — a tela só mostra `.message`, e ele tem de ser genérico.
+  it("erro 500 na lista de tokens nunca mostra o código cru na tela", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(sessionReply());
+      if (path === "/graphql") {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("query CitiesForTokenScope")) return Promise.resolve(citiesReply([]));
+        return Promise.resolve(reply(500, {}));
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+
+    renderTokens();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).not.toContain("http_");
+    expect(document.body.textContent).not.toContain("http_500");
+  });
 });

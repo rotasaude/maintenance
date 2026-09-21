@@ -88,4 +88,16 @@ describe("Cities", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe("sem conexão com a API");
   });
+
+  // I3: um 500 (ou um 403 de Origin) na API não pode devolver o código cru
+  // (http_500) para a tela — a mensagem tem de ser genérica em português.
+  it("erro 500 da API nunca mostra o código cru (http_500) na tela", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 500 }));
+
+    renderCities(onOpen);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).not.toContain("http_");
+    expect(document.body.textContent).not.toContain("http_500");
+  });
 });

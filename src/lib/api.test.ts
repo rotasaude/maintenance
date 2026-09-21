@@ -82,6 +82,28 @@ describe("api client", () => {
     await expect(rest("POST", "/invitations/accept", {})).rejects.toMatchObject({ code: "weak_password" });
   });
 
+  // I3: RequestRejected.message era o CÓDIGO cru (http_500, o código de erro
+  // da API...) — telas que só sabem ler `.message` (Cities, CityDetail,
+  // Maintainers, Tokens, Audit) mostravam a palavra de máquina direto na
+  // tela. `.code`/`.status` continuam disponíveis para quem quiser tratar
+  // por código (Invitation já faz isso), mas `.message` agora é sempre uma
+  // frase genérica em português.
+  it("RequestRejected carrega uma mensagem genérica em português, não o código cru", async () => {
+    reply(500, {});
+    reply(403, { error: "unexpected_origin" });
+
+    const rejection1 = await rest("GET", "/session-status-fake").catch((e) => e);
+    expect(rejection1).toBeInstanceOf(RequestRejected);
+    expect(rejection1.message).toBe("a API recusou a requisição");
+    expect(rejection1.code).toBe("http_500");
+    expect(rejection1.status).toBe(500);
+
+    const rejection2 = await rest("GET", "/outra-rota-fake").catch((e) => e);
+    expect(rejection2.message).toBe("a API recusou a requisição");
+    expect(rejection2.code).toBe("unexpected_origin");
+    expect(rejection2.status).toBe(403);
+  });
+
   it("turns a network failure into NetworkError", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await expect(rest("GET", "/session")).rejects.toBeInstanceOf(NetworkError);

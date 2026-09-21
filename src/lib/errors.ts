@@ -5,8 +5,14 @@ export class InvalidCredentials extends Error { constructor() { super("e-mail, s
 export class RateLimited extends Error { constructor() { super("muitas tentativas, aguarde"); } }
 export class NetworkError extends Error { constructor() { super("sem conexão com a API"); } }
 
+// I3: `.message` é SEMPRE uma frase genérica em português — nunca o código
+// cru (`http_500`, `weak_password`...). `.code`/`.status` continuam aqui
+// para quem precisa tratar por código (Invitation.tsx já faz isso); toda
+// outra tela só lê `.message` e não pode nunca mostrar a palavra de máquina.
 export class RequestRejected extends Error {
-  constructor(public readonly code: string, public readonly status: number) { super(code); }
+  constructor(public readonly code: string, public readonly status: number) {
+    super("a API recusou a requisição");
+  }
 }
 
 export class GraphQLRefusal extends Error {

@@ -182,4 +182,21 @@ describe("Audit", () => {
 
     expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
+
+  // I3: um 500 na consulta de auditoria não pode devolver o código cru
+  // (http_500) — a tela só mostra `.message`, e ele tem de ser genérico.
+  it("erro 500 na consulta de auditoria nunca mostra o código cru na tela", async () => {
+    fetchMock.mockImplementation((_url, init) => {
+      const body = bodyOf([ _url, init ]);
+      if (body.query.includes("query Maintainers")) return Promise.resolve(maintainersReply(MAINTAINERS));
+      if (body.query.includes("query AuditEvents")) return Promise.resolve(reply(500, {}));
+      return Promise.resolve(reply(200, { data: {} }));
+    });
+
+    renderAudit();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).not.toContain("http_");
+    expect(document.body.textContent).not.toContain("http_500");
+  });
 });

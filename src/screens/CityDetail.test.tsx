@@ -236,4 +236,17 @@ describe("CityDetail", () => {
     await user.click(screen.getByRole("button", { name: "atualizar" }));
     await waitFor(() => expect(operationCalls(fetchMock, "CityAccounts")).toHaveLength(2));
   });
+
+  // I3: um 403 (Origin recusada pelo api) na consulta de topo não pode
+  // devolver o código cru (http_403) — nunca o código, sempre a mensagem
+  // genérica em português.
+  it("erro 403 da API na consulta de topo nunca mostra o código cru na tela", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify({}), { status: 403 })));
+
+    renderDetail();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).not.toContain("http_");
+    expect(document.body.textContent).not.toContain("http_403");
+  });
 });
