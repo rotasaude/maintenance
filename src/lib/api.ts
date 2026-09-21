@@ -8,7 +8,14 @@ import { AuthRequired, GraphQLRefusal, InvalidCredentials, NetworkError, RateLim
 // Toda chamada leva X-Rota-Maintenance: 1 — a API falha fechado sem ele — e
 // credentials: "include", porque em staging a API é outro host do mesmo site.
 // Nada vai na URL além do caminho: token, senha e código só no corpo.
-const LOGIN_FAILURES = new Set([ "invalid_credentials", "invalid_session" ]);
+// I1: TODO 401 que /session e /session/challenge podem devolver (ver
+// app/controllers/maintenance/sessions_controller.rb no api) — não só
+// invalid_credentials/invalid_session. invalid_code (TOTP errado, ainda sob
+// o limite) e too_many_attempts (TOTP errado estourando o limite, ou conta
+// já bloqueada) também são recusas de credencial, nunca sessão expirada: um
+// código que falta aqui vira AuthRequired e dispara o listener de
+// onAuthRequired à toa, silenciando o Login (I1).
+const LOGIN_FAILURES = new Set([ "invalid_credentials", "invalid_session", "invalid_code", "too_many_attempts" ]);
 const listeners = new Set<() => void>();
 
 export function onAuthRequired(listener: () => void): () => void {

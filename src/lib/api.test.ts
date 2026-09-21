@@ -49,14 +49,27 @@ describe("api client", () => {
     off();
   });
 
-  it("turns invalid_credentials and invalid_session into InvalidCredentials, not AuthRequired", async () => {
+  // Todo 401 que /session e /session/challenge realmente emitem (ver
+  // app/controllers/maintenance/sessions_controller.rb no api): e-mail ou
+  // senha errados, conta bloqueada e código não-matriculado caem em
+  // invalid_credentials (create); sessão pendente ausente/expirada/de conta
+  // bloqueada cai em invalid_session; TOTP errado sem estourar o limite cai
+  // em invalid_code; TOTP errado estourando o limite (ou já bloqueado) cai
+  // em too_many_attempts (challenge_totp). Nenhum deles pode acionar
+  // AuthRequired/o listener — só confirmariam a existência de mantenedores
+  // ou de contas bloqueadas para quem tenta.
+  it("turns every real 401 from /session and /session/challenge into InvalidCredentials, not AuthRequired", async () => {
     const listener = vi.fn();
     const off = onAuthRequired(listener);
-    reply(401, { error: "invalid_credentials" });
-    reply(401, { error: "invalid_session" });
+    const codes = [ "invalid_credentials", "invalid_session", "invalid_code", "too_many_attempts" ];
 
-    await expect(rest("POST", "/session", {})).rejects.toBeInstanceOf(InvalidCredentials);
-    await expect(rest("POST", "/session/challenge", {})).rejects.toBeInstanceOf(InvalidCredentials);
+    for (const code of codes) {
+      reply(401, { error: code });
+      await expect(rest("POST", "/session", {})).rejects.toBeInstanceOf(InvalidCredentials);
+      reply(401, { error: code });
+      await expect(rest("POST", "/session/challenge", {})).rejects.toBeInstanceOf(InvalidCredentials);
+    }
+
     expect(listener).not.toHaveBeenCalled();
     off();
   });
