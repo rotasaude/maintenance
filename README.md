@@ -41,12 +41,20 @@ docker exec api-dev printenv | grep MAINTENANCE
 
 ## Convidar o primeiro mantenedor
 
+Conta de acesso em dev: **`maintainer@rota-saude.com`**. Não há senha semeada:
+o mantenedor nasce por convite e define a própria senha e o TOTP na matrícula.
+Rode na raiz do monorepo (onde fica o `docker-compose.yml`):
+
 ```bash
-docker compose exec api bin/rails "maintainer:invite[email@exemplo.com]"
+docker compose exec api bin/rails "maintainer:invite[maintainer@rota-saude.com]"
 ```
 
 O comando imprime `[maintainer:invite] <MAINTENANCE_FRONTEND_ORIGIN>/invitations#<token>`.
-Abra esse link no navegador para completar o cadastro (TOTP).
+Abra esse link no navegador para completar o cadastro: escaneie o QR no app
+autenticador, defina a senha (mínimo de 12 caracteres) e informe o código.
+Abra o link numa aba só — cada abertura gera um segredo TOTP novo. Rodar o
+comando de novo para uma conta já matriculada zera senha, TOTP e sessões
+(é o caminho de recuperação).
 
 ## Schema e codegen
 
