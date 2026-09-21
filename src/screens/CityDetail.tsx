@@ -122,39 +122,56 @@ function renderTab<TResult extends { city?: unknown }>(
 export function CityDetail({ slug, onBack }: { slug: string; onBack(): void }) {
   const [ activeTab, setActiveTab ] = useState<TabKey | null>(null);
 
+  // staleTime: Infinity em TODA consulta daqui (spec §6: "sem atualização
+  // automática"; ruling P5). Cada campo de cidade abre conexão com o banco
+  // dela — sem isso, o padrão do react-query (staleTime: 0) marca a
+  // consulta como stale assim que ela sai de `enabled`, e reabrir a aba
+  // (enabled false→true de novo) dispara outra busca sozinha: Contas →
+  // Perfil → Contas faria DUAS conexões com "Contas" sem o mantenedor
+  // pedir. Com staleTime: Infinity, os dados carregados uma vez nunca
+  // ficam stale sozinhos — só `refetch()` (o botão "atualizar") busca de
+  // novo. A chave da consulta ainda leva o slug: trocar de cidade é cache
+  // novo, do zero.
   const header = useQuery({
     queryKey: [ "city", slug, "header" ],
-    queryFn: () => gql(CityHeaderQuery, { slug })
+    queryFn: () => gql(CityHeaderQuery, { slug }),
+    staleTime: Infinity
   });
   const profile = useQuery({
     queryKey: [ "city", slug, "profile" ],
     queryFn: () => gql(CityProfileQuery, { slug }),
-    enabled: activeTab === "profile"
+    enabled: activeTab === "profile",
+    staleTime: Infinity
   });
   const protocols = useQuery({
     queryKey: [ "city", slug, "protocols" ],
     queryFn: () => gql(CityProtocolsQuery, { slug }),
-    enabled: activeTab === "protocols"
+    enabled: activeTab === "protocols",
+    staleTime: Infinity
   });
   const alertRecipients = useQuery({
     queryKey: [ "city", slug, "alertRecipients" ],
     queryFn: () => gql(CityRecipientsQuery, { slug }),
-    enabled: activeTab === "alertRecipients"
+    enabled: activeTab === "alertRecipients",
+    staleTime: Infinity
   });
   const accounts = useQuery({
     queryKey: [ "city", slug, "accounts" ],
     queryFn: () => gql(CityAccountsQuery, { slug }),
-    enabled: activeTab === "accounts"
+    enabled: activeTab === "accounts",
+    staleTime: Infinity
   });
   const counts = useQuery({
     queryKey: [ "city", slug, "counts" ],
     queryFn: () => gql(CityCountsQuery, { slug }),
-    enabled: activeTab === "counts"
+    enabled: activeTab === "counts",
+    staleTime: Infinity
   });
   const operations = useQuery({
     queryKey: [ "city", slug, "operations" ],
     queryFn: () => gql(CityOperationsQuery, { slug }),
-    enabled: activeTab === "operations"
+    enabled: activeTab === "operations",
+    staleTime: Infinity
   });
 
   const city = header.data?.data?.city ?? null;
@@ -165,6 +182,7 @@ export function CityDetail({ slug, onBack }: { slug: string; onBack(): void }) {
         <Button onClick={onBack}>voltar</Button>
       </div>
 
+      {header.isPending && <p>carregando…</p>}
       {header.isError && (
         <ErrorState message={header.error instanceof Error ? header.error.message : "erro inesperado"} />
       )}

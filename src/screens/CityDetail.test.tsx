@@ -197,4 +197,43 @@ describe("CityDetail", () => {
       expect(operationCalls(fetchMock, op)).toHaveLength(0);
     }
   });
+
+  it("reabrir uma aba já carregada serve do cache — só 'atualizar' abre conexão nova (ruling P5, spec §6: sem atualização automática)", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((_url, init) => {
+      const body = bodyOf([ _url, init ]);
+      if (body.query.includes("query CityHeader")) return Promise.resolve(HEADER_REPLY.clone());
+      if (body.query.includes("query CityAccounts")) {
+        return Promise.resolve(
+          reply(200, { data: { city: { slug: "sp", accounts: [ { login: "op1", roles: [], active: true, mfaEnrolled: false } ] } } })
+        );
+      }
+      if (body.query.includes("query CityProfile")) {
+        return Promise.resolve(
+          reply(200, { data: { city: { slug: "sp", consentTermVersion: "v3", profile: { name: "São Paulo", uf: "SP", ibgeCode: "3550308" } } } })
+        );
+      }
+      return Promise.resolve(reply(200, { data: { city: { slug: "sp" } } }));
+    });
+
+    renderDetail();
+    await screen.findByText("São Paulo");
+
+    await user.click(screen.getByRole("button", { name: "Contas" }));
+    await screen.findByText("op1");
+    await waitFor(() => expect(operationCalls(fetchMock, "CityAccounts")).toHaveLength(1));
+
+    await user.click(screen.getByRole("button", { name: "Perfil" }));
+    await screen.findByText("3550308");
+
+    await user.click(screen.getByRole("button", { name: "Contas" }));
+    await screen.findByText("op1");
+
+    // Reabrir "Contas" (já carregada) serve do cache: nenhuma segunda
+    // conexão com o banco da cidade — só "atualizar" pede uma nova.
+    expect(operationCalls(fetchMock, "CityAccounts")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "atualizar" }));
+    await waitFor(() => expect(operationCalls(fetchMock, "CityAccounts")).toHaveLength(2));
+  });
 });
