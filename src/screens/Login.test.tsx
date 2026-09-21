@@ -135,4 +135,60 @@ describe("Login", () => {
     render(<Login onSignedIn={onSignedIn} notice="sessão expirada" />);
     expect(screen.getByRole("alert").textContent).toBe("sessão expirada");
   });
+
+  // I2: Login relançava NetworkError, RequestRejected (403 de Origin, 500,
+  // 404...) e AuthRequired sem mensagem nenhuma — a exceção não tratada
+  // derrubava o formulário sem nenhum retorno visível ao mantenedor.
+  it("NetworkError no passo 1 mostra 'sem conexão com a API'", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    render(<Login onSignedIn={onSignedIn} />);
+    await user.type(screen.getByLabelText("E-mail"), "a@b.com");
+    await user.type(screen.getByLabelText("Senha"), "correcthorsebatterystaple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("sem conexão com a API");
+  });
+
+  it("RequestRejected (ex.: 500 ou 403 de Origin) no passo 1 mostra uma mensagem genérica, nunca fica mudo", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(reply(500, { error: "internal_server_error" }));
+
+    render(<Login onSignedIn={onSignedIn} />);
+    await user.type(screen.getByLabelText("E-mail"), "a@b.com");
+    await user.type(screen.getByLabelText("Senha"), "correcthorsebatterystaple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("não foi possível entrar agora — tente de novo");
+  });
+
+  it("um 401 fora do catálogo conhecido (AuthRequired) no passo 1 mostra a mensagem genérica, não fica mudo", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(reply(401, { error: "algo_novo_e_desconhecido" }));
+
+    render(<Login onSignedIn={onSignedIn} />);
+    await user.type(screen.getByLabelText("E-mail"), "a@b.com");
+    await user.type(screen.getByLabelText("Senha"), "correcthorsebatterystaple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("não foi possível entrar agora — tente de novo");
+  });
+
+  it("RequestRejected no passo 2 mostra a mensagem genérica sem descartar a sessão pendente", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(reply(200, { mfa_required: true, session_id: "sess-1" }));
+    fetchMock.mockResolvedValueOnce(reply(500, { error: "internal_server_error" }));
+
+    render(<Login onSignedIn={onSignedIn} />);
+    await user.type(screen.getByLabelText("E-mail"), "a@b.com");
+    await user.type(screen.getByLabelText("Senha"), "correcthorsebatterystaple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    await user.type(await screen.findByLabelText("Código"), "123456");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("não foi possível entrar agora — tente de novo");
+    expect(screen.getByLabelText("Código")).not.toBeNull();
+  });
 });

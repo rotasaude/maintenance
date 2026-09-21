@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { rest } from "../lib/api";
-import { InvalidCredentials, RateLimited } from "../lib/errors";
+import { InvalidCredentials, NetworkError, RateLimited } from "../lib/errors";
 import { toMe, type Me, type SessionPayload } from "../lib/session";
 import { Field } from "../components/Field";
 import { Button } from "../components/Button";
@@ -11,6 +11,20 @@ import { ErrorState } from "../components/ErrorState";
 // nunca em localStorage, nunca na URL — e some ao voltar ao passo 1.
 type Step = "credentials" | "code";
 type LoginFailure = { error?: string };
+
+// I2: nenhuma falha pode deixar o formulário mudo. InvalidCredentials e
+// RateLimited já têm mensagem pronta em português (src/lib/errors.ts);
+// NetworkError também. Qualquer outra coisa — RequestRejected (403 de
+// Origin, 500, 404...), AuthRequired, ou algo inesperado — cai na mensagem
+// genérica: nunca relança sem mostrar nada.
+const GENERIC_LOGIN_ERROR = "não foi possível entrar agora — tente de novo";
+
+function messageFor(err: unknown): string {
+  if (err instanceof InvalidCredentials || err instanceof RateLimited || err instanceof NetworkError) {
+    return err.message;
+  }
+  return GENERIC_LOGIN_ERROR;
+}
 
 export function Login({ onSignedIn, notice }: { onSignedIn(me: Me): void; notice?: string | null }) {
   const [ step, setStep ] = useState<Step>("credentials");
@@ -41,8 +55,7 @@ export function Login({ onSignedIn, notice }: { onSignedIn(me: Me): void; notice
       setCode("");
       setStep("code");
     } catch (err) {
-      if (err instanceof InvalidCredentials || err instanceof RateLimited) setError(err.message);
-      else throw err;
+      setError(messageFor(err));
     } finally {
       setBusy(false);
     }
@@ -58,8 +71,7 @@ export function Login({ onSignedIn, notice }: { onSignedIn(me: Me): void; notice
       onSignedIn(toMe(payload));
     } catch (err) {
       if (err instanceof InvalidCredentials) backToCredentials(err.message);
-      else if (err instanceof RateLimited) setError(err.message);
-      else throw err;
+      else setError(messageFor(err));
     } finally {
       setBusy(false);
     }
