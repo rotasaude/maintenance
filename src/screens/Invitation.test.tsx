@@ -149,7 +149,10 @@ describe("Invitation", () => {
     expect(onDone).not.toHaveBeenCalled();
   });
 
-  it("invalid_code da API mostra 'código inválido — use o código atual do autenticador'", async () => {
+  // O enroll ROTACIONA o otp_secret a cada chamada (ver o controller) — quem
+  // abriu o link em mais de uma aba pode estar lendo o QR de uma chave que
+  // já não é mais a válida, e um invalid_code sozinho não dá essa pista.
+  it("invalid_code da API mostra a mensagem com a dica de QR de aba desatualizada", async () => {
     const user = userEvent.setup();
     fetchMock.mockResolvedValueOnce(enrollReply());
     fetchMock.mockResolvedValueOnce(reply(422, { error: "invalid_code" }));
@@ -159,7 +162,9 @@ describe("Invitation", () => {
 
     await fillAcceptForm(user);
 
-    expect((await screen.findByRole("alert")).textContent).toBe("código inválido — use o código atual do autenticador");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "código inválido — use o código atual do autenticador — se abriu o link em mais de uma aba, use o QR da aba mais recente"
+    );
     expect(onDone).not.toHaveBeenCalled();
   });
 

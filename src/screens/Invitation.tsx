@@ -14,7 +14,13 @@ type EnrollPayload = { email_address: string; otpauth_uri: string; secret: strin
 
 const MIN_PASSWORD_LENGTH = 12;
 const WEAK_PASSWORD_MESSAGE = `a senha precisa de pelo menos ${MIN_PASSWORD_LENGTH} caracteres`;
-const INVALID_CODE_MESSAGE = "código inválido — use o código atual do autenticador";
+// O enroll ROTACIONA o otp_secret a cada chamada (ver o comentário do
+// enrollRequestRef acima) — quem abriu o link em mais de uma aba pode estar
+// lendo o QR de uma chave que já não é mais a válida, e "código inválido"
+// sozinho não dá essa pista. A dica não afirma que foi isso — só aponta a
+// causa mais provável de um código "certo" ser recusado.
+const INVALID_CODE_MESSAGE =
+  "código inválido — use o código atual do autenticador — se abriu o link em mais de uma aba, use o QR da aba mais recente";
 const INVALID_INVITATION_MESSAGE = "convite inválido, usado ou expirado";
 const MISMATCH_MESSAGE = "as senhas não coincidem";
 const DONE_MESSAGE = "Matrícula concluída. Entre com sua senha e o código do autenticador.";
