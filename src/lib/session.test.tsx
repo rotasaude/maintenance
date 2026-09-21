@@ -81,6 +81,32 @@ describe("SessionProvider", () => {
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 
+  it("um 401 que chega no mesmo instante síncrono de um signIn() ainda esvazia o cache e mostra a notice", async () => {
+    // Reproduz a janela entre o commit de signedIn e o efeito de assinatura
+    // rodar de novo: signIn() e o 401 disparam na MESMA passagem síncrona,
+    // antes de qualquer efeito passivo ter chance de reinscrever o listener
+    // com o estado novo. Com um listener que lê `state` de uma closure
+    // presa às deps de um useEffect, esse 401 seria silenciosamente
+    // ignorado (a closure ainda vê o estado anterior a signedIn).
+    fetchMock.mockResolvedValueOnce(reply(401, { error: "unauthenticated" }));
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.state).toBe("signedOut"));
+
+    queryClient.setQueryData([ "seed" ], { ok: true });
+    fetchMock.mockResolvedValueOnce(reply(401, { error: "unauthenticated" }));
+
+    await act(async () => {
+      result.current.signIn({ id: "m1", emailAddress: "a@b.com", expiresAt: "2026-01-01T00:00:00Z" });
+      // Nenhum `await` entre signIn() e a chamada abaixo: o 401 é disparado
+      // antes de qualquer efeito rodar.
+      await rest("GET", "/some-query").catch(() => {});
+    });
+
+    await waitFor(() => expect(result.current.state).toBe("signedOut"));
+    expect(result.current.notice).toBe("sessão expirada");
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
   it("signOut() chama DELETE /session, esvazia o cache e vai para signedOut mesmo se a rede falhar", async () => {
     fetchMock.mockResolvedValueOnce(
       reply(200, { id: "m1", email_address: "a@b.com", expires_at: "2026-01-01T00:00:00Z" })

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { onAuthRequired, rest } from "./api";
 
@@ -29,33 +29,49 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [ me, setMe ] = useState<Me | null>(null);
   const [ notice, setNotice ] = useState<string | null>(null);
 
+  // Fix round 1: uma assinatura reinscrita a cada troca de `state` (via
+  // `state` nas deps do efeito) tem uma janela — efeitos passivos rodam
+  // DEPOIS do commit, então um 401 que chega entre `signIn()` comitar
+  // `signedIn` e o efeito reinscrever ainda vê a closure velha e é
+  // silenciosamente ignorado (sem drop, sem notice: exatamente o invariante
+  // que esta tela existe para garantir). A correção: UMA assinatura estável
+  // (deps só `[drop]`, nunca `[state, drop]`) e o listener lê o estado de um
+  // ref atualizado SINCRONAMENTE em cada transição — no mesmo instante do
+  // setState, não durante a renderização — nunca dentro de um atualizador
+  // de setState (isso continua proibido, é o problema original da brief).
+  const stateRef = useRef<State>("loading");
+
+  const setTrackedState = useCallback((next: State) => {
+    stateRef.current = next;
+    setState(next);
+  }, []);
+
   const drop = useCallback((message: string | null) => {
     queryClient.clear();
     setMe(null);
     setNotice(message);
-    setState("signedOut");
-  }, [ queryClient ]);
+    setTrackedState("signedOut");
+  }, [ queryClient, setTrackedState ]);
 
   useEffect(() => {
     let alive = true;
     rest<SessionPayload>("GET", "/session")
-      .then((payload) => { if (alive) { setMe(toMe(payload)); setState("signedIn"); } })
+      .then((payload) => { if (alive) { setMe(toMe(payload)); setTrackedState("signedIn"); } })
       .catch(() => { if (alive) drop(null); });
     return () => { alive = false; };
-  }, [ drop ]);
+  }, [ drop, setTrackedState ]);
 
-  // Efeito colateral fora do atualizador de setState (a brief avisa contra
-  // chamar `drop` dentro de um `setState((current) => ...)`): o ouvinte fecha
-  // sobre o `state` corrente por causa do `state` nas deps — o efeito
-  // reinscreve a cada troca de estado, então o listener sempre vê o estado
-  // atual sem precisar de ref nem de side effect dentro do setter.
   useEffect(() => {
     return onAuthRequired(() => {
-      if (state === "signedIn") drop("sessão expirada");
+      if (stateRef.current === "signedIn") drop("sessão expirada");
     });
-  }, [ state, drop ]);
+  }, [ drop ]);
 
-  const signIn = useCallback((next: Me) => { setNotice(null); setMe(next); setState("signedIn"); }, []);
+  const signIn = useCallback((next: Me) => {
+    setNotice(null);
+    setMe(next);
+    setTrackedState("signedIn");
+  }, [ setTrackedState ]);
   const signOut = useCallback(async () => {
     try { await rest("DELETE", "/session"); } catch { /* segue mesmo se a rede falhar */ }
     drop(null);
