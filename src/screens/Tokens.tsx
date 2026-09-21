@@ -9,6 +9,7 @@ import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { Panel } from "../components/Panel";
 import { DataTable, type Column } from "../components/DataTable";
+import { STEP_UP_CODE_HELP_TEXT, StepUpCodeError } from "../components/StepUpCode";
 
 // Tokens de serviço (Task 8): lista + criação com step-up + revogação. O
 // segredo (`secretOnce`) volta uma única vez, na resposta da criação, e é o
@@ -353,10 +354,11 @@ export function Tokens() {
               label="Código"
               name="code"
               autoComplete="one-time-code"
+              helpText={STEP_UP_CODE_HELP_TEXT}
               value={code}
               onChange={setCode}
             />
-            {codeError && <ErrorState message={codeError.message} />}
+            {codeError && <StepUpCodeError message={codeError.message} />}
           </div>
 
           <Button type="submit" busy={createMutation.isPending}>criar token</Button>

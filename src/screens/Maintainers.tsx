@@ -10,6 +10,7 @@ import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
 import { Panel } from "../components/Panel";
 import { DataTable, type Column } from "../components/DataTable";
+import { STEP_UP_CODE_HELP_TEXT, StepUpCodeError } from "../components/StepUpCode";
 
 // Mantenedores (Task 7): lista + convite + desativação. O convite não abre
 // sessão nova nem entrega link nenhum — quem entrega é o `rake
@@ -30,8 +31,6 @@ const DeactivateMutation = graphql(`
 type MaintainerRow = { id: string; emailAddress: string; active: boolean; enrolled: boolean; createdAt: string };
 type FieldError = { path?: string | null; message: string };
 
-const CODE_HELP_TEXT = "Se acabou de entrar, espere o próximo código.";
-const CODE_LOCK_WARNING = "Tentativas erradas contam para o bloqueio da conta.";
 const INVITE_OK_MESSAGE = "Convite registrado. O link é entregue pelo `rake maintainer:invite` no servidor.";
 const GENERIC_ERROR = "não foi possível concluir — tente de novo";
 
@@ -187,16 +186,11 @@ export function Maintainers() {
               label="Código"
               name="code"
               autoComplete="one-time-code"
-              helpText={CODE_HELP_TEXT}
+              helpText={STEP_UP_CODE_HELP_TEXT}
               value={code}
               onChange={setCode}
             />
-            {codeError && (
-              <>
-                <ErrorState message={codeError.message} />
-                <p style={{ margin: 0, fontSize: 11, color: "var(--ink3)" }}>{CODE_LOCK_WARNING}</p>
-              </>
-            )}
+            {codeError && <StepUpCodeError message={codeError.message} />}
           </div>
           <Button type="submit" busy={inviteMutation.isPending}>convidar</Button>
         </form>
