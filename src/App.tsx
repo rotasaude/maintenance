@@ -4,6 +4,7 @@ import { maintenanceEnv } from "./env";
 import { useSession, type Me } from "./lib/session";
 import { Invitation } from "./screens/Invitation";
 import { Login } from "./screens/Login";
+import { Shell } from "./screens/Shell";
 
 // Entrada mínima (Task 2) trocada pelo fluxo de sessão (Task 4): carregando,
 // entrar ou entrado. A Task 6 troca o ramo "signedIn" pelo shell de verdade.
@@ -18,8 +19,11 @@ import { Login } from "./screens/Login";
 // valor recebido; a tela de matrícula manda em cima de qualquer estado de
 // sessão até onDone — quem chega pelo link ainda não entrou, e não faz
 // sentido esperar a sessão carregar antes.
+//
+// Task 6: o ramo "signedIn" troca o placeholder pelo shell de verdade —
+// Shell lê `me` e `signOut` do próprio useSession(), não por prop.
 export function App({ initialInvitationToken = null }: { initialInvitationToken?: string | null } = {}) {
-  const { state, me, notice, signIn, signOut } = useSession();
+  const { state, me, notice, signIn } = useSession();
   const [ invitationToken, setInvitationToken ] = useState(initialInvitationToken);
   const [ invitationNotice, setInvitationNotice ] = useState<string | null>(null);
 
@@ -42,12 +46,7 @@ export function App({ initialInvitationToken = null }: { initialInvitationToken?
         <>
           {state === "loading" && <p>carregando…</p>}
           {state === "signedOut" && <Login onSignedIn={handleSignedIn} notice={invitationNotice ?? notice} />}
-          {state === "signedIn" && me && (
-            <p>
-              Olá, {me.emailAddress}{" "}
-              <button onClick={() => void signOut()}>sair</button>
-            </p>
-          )}
+          {state === "signedIn" && me && <Shell />}
         </>
       )}
     </>
