@@ -5,10 +5,11 @@ import { EmptyState } from "../components/EmptyState";
 import { Cities } from "./Cities";
 import { CityDetail } from "./CityDetail";
 import { Maintainers } from "./Maintainers";
+import { Audit } from "./Audit";
 
 // Casca do mantenedor logado (Task 6): cabeçalho com e-mail e navegação,
-// corpo com a tela ativa. Mantenedores chega na Task 7; Tokens e Auditoria
-// chegam nas Tasks 8-9 — até lá, "em breve".
+// corpo com a tela ativa. Mantenedores (Task 7) e Auditoria (Task 9) já
+// existem; Tokens chega na Task 8 — até lá, "em breve".
 export type Screen = "cities" | "maintainers" | "tokens" | "audit";
 
 const NAV: { key: Screen; label: string }[] = [
@@ -75,7 +76,7 @@ export function Shell() {
         )}
         {screen === "maintainers" && <Maintainers />}
         {screen === "tokens" && <EmptyState message="em breve" />}
-        {screen === "audit" && <EmptyState message="em breve" />}
+        {screen === "audit" && <Audit />}
       </main>
     </div>
   );
