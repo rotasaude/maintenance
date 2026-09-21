@@ -65,15 +65,33 @@ npm run build
 
 ### E2E
 
+Pré-requisitos: o stack de dev de pé (`api`, `worker` e `maintenance` —
+`docker compose up -d api worker maintenance`) e, uma vez só por máquina,
+os binários do Chromium do Playwright:
+
+```bash
+npx playwright install chromium
+```
+
+Depois disso:
+
 ```bash
 npm run e2e
 ```
 
-Roda no host (Playwright), contra o stack de dev, não no container. Cada
-código TOTP só é aceito uma vez (`last_otp_step`): login e step-up dentro do
-mesmo passo de 30s são recusados, então a suíte espera o próximo passo entre
-usos — fica mais lenta (~2 min), mas é o comportamento real que o usuário
-vai ter.
+Roda no host (Playwright), contra o stack de dev, não no container — sem
+`webServer` no `playwright.config.ts`, porque quem sobe o app é o
+`docker-compose.yml`. Cada código TOTP só é aceito uma vez (`last_otp_step`):
+login, matrícula e a criação de um token dentro do mesmo passo de 30s
+seriam recusados, então a suíte espera o próximo passo entre usos — leva
+cerca de meio minuto a um minuto na prática (o plano previa ~2 min), mas é
+o comportamento real que o usuário vai ter.
+
+A suíte cria o próprio mantenedor (`rake maintainer:invite`, e-mail único
+por execução) e um token de serviço, e revoga o token ao final — mas
+**deixa um mantenedor e linhas de auditoria imutáveis no banco de dev a
+cada execução**: é o custo aceito (a auditoria recusa `DELETE` por
+trigger), não tente apagá-los.
 
 ## Staging
 
