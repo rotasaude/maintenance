@@ -117,4 +117,32 @@ describe("App — o token do convite sobrevive ao StrictMode", () => {
       "Matrícula concluída. Entre com sua senha e o código do autenticador."
     );
   });
+
+  // I5: maintenanceEnv() agora FALHA ALTO num build de produção sem
+  // VITE_MAINTENANCE_ENV (em vez de assumir "development" e esconder a
+  // faixa de ambiente). Chamado no topo de App, em render — sem tratamento,
+  // isso derrubaria a árvore inteira e deixaria a tela em branco. import.meta.env
+  // é mutável em runtime sob o Vitest (não há substituição estática como no
+  // build real), então este teste simula o build de produção mutando os
+  // dois campos e desfazendo no fim, sem depender de nenhum outro teste.
+  it("um erro ao determinar o ambiente mostra uma mensagem visível, nunca a tela em branco", async () => {
+    const originalProd = import.meta.env.PROD;
+    const originalEnvVar = import.meta.env.VITE_MAINTENANCE_ENV;
+    // import.meta.env é um proxy que só guarda strings — atribuir undefined
+    // vira a STRING "undefined" (e o valor deixaria de contar como
+    // "ausente"). "" é o jeito certo de simular a variável não definida.
+    Object.assign(import.meta.env, { PROD: true, VITE_MAINTENANCE_ENV: "" });
+
+    fetchMock.mockResolvedValue(reply(401, { error: "unauthenticated" }));
+
+    try {
+      renderApp(null);
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe("VITE_MAINTENANCE_ENV é obrigatória em build de produção");
+    } finally {
+      Object.assign(import.meta.env, { PROD: originalProd });
+      if (originalEnvVar === undefined) delete (import.meta.env as Record<string, unknown>).VITE_MAINTENANCE_ENV;
+      else import.meta.env.VITE_MAINTENANCE_ENV = originalEnvVar;
+    }
+  });
 });

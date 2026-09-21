@@ -2,12 +2,30 @@ import { describe, expect, it } from "vitest";
 import { apiBase, maintenanceEnv } from "./env";
 
 describe("maintenanceEnv", () => {
-  it("é development por padrão quando o valor não está definido", () => {
-    expect(maintenanceEnv(undefined)).toBe("development");
+  it("é development por padrão quando o valor não está definido (fora de um build de produção)", () => {
+    expect(maintenanceEnv(undefined, false)).toBe("development");
   });
 
-  it("é development quando o valor é uma string vazia", () => {
-    expect(maintenanceEnv("")).toBe("development");
+  it("é development quando o valor é uma string vazia (fora de um build de produção)", () => {
+    expect(maintenanceEnv("", false)).toBe("development");
+  });
+
+  // I5: em build de PRODUÇÃO (import.meta.env.PROD), a variável ausente ou
+  // vazia não pode virar "development" silenciosamente — um build de
+  // staging sem VITE_MAINTENANCE_ENV definida se autorrotularia como
+  // development e esconderia a faixa de aviso (spec F6). Falha alto, não
+  // vira padrão. O parâmetro `isProd` é injetado — nunca lê
+  // import.meta.env.PROD de verdade neste teste.
+  it("recusa valor ausente em build de produção — falha alto em vez de assumir development", () => {
+    expect(() => maintenanceEnv(undefined, true)).toThrow("VITE_MAINTENANCE_ENV é obrigatória em build de produção");
+  });
+
+  it("recusa string vazia em build de produção", () => {
+    expect(() => maintenanceEnv("", true)).toThrow("VITE_MAINTENANCE_ENV é obrigatória em build de produção");
+  });
+
+  it("aceita staging em build de produção quando o valor está definido", () => {
+    expect(maintenanceEnv("staging", true)).toBe("staging");
   });
 
   it("aceita staging", () => {

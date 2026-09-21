@@ -3,8 +3,22 @@
 // staging, absoluto, outro host no mesmo site, com o CORS que o api já tem.
 export type MaintenanceEnv = "development" | "staging";
 
-export function maintenanceEnv(value: string | undefined = import.meta.env.VITE_MAINTENANCE_ENV): MaintenanceEnv {
-  if (value === undefined || value === "") return "development";
+// I5: em dev/test, uma variável ausente cai em "development" — conveniente
+// para rodar sem .env. Mas num BUILD DE PRODUÇÃO (import.meta.env.PROD;
+// staging é servido a partir de um build assim, `vite build`), o mesmo
+// default silencioso rotularia um deploy de staging como development e
+// esconderia a faixa de aviso (spec F6, EnvBanner) — o erro mais caro que
+// esta tela pode induzir. Falha alto em vez de assumir. `isProd` é
+// parâmetro, não leitura direta de import.meta.env.PROD, para o teste
+// poder injetar os dois casos sem depender do modo real do Vitest.
+export function maintenanceEnv(
+  value: string | undefined = import.meta.env.VITE_MAINTENANCE_ENV,
+  isProd: boolean = import.meta.env.PROD
+): MaintenanceEnv {
+  if (value === undefined || value === "") {
+    if (isProd) throw new Error("VITE_MAINTENANCE_ENV é obrigatória em build de produção");
+    return "development";
+  }
   if (value === "development" || value === "staging") return value;
   throw new Error(`VITE_MAINTENANCE_ENV desconhecido: ${value}`);
 }

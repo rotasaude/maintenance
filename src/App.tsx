@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { EnvBanner } from "./components/EnvBanner";
+import { ErrorState } from "./components/ErrorState";
 import { maintenanceEnv } from "./env";
 import { useSession, type Me } from "./lib/session";
 import { Invitation } from "./screens/Invitation";
@@ -37,9 +38,27 @@ export function App({ initialInvitationToken = null }: { initialInvitationToken?
     signIn(next);
   }
 
+  // I5: maintenanceEnv() agora falha alto (em vez de assumir "development")
+  // quando um build de produção sobe sem VITE_MAINTENANCE_ENV — um deploy de
+  // staging mal configurado é exatamente o caso que a faixa de ambiente
+  // (spec F6) existe para prevenir. Sem este try/catch, o throw estouraria
+  // durante o render e derrubaria a árvore inteira: tela em branco, sem
+  // nenhum indício do que houve. Barato de evitar — mostra a mensagem em vez
+  // de deixar a exceção subir.
+  let env;
+  try {
+    env = maintenanceEnv();
+  } catch (err) {
+    return (
+      <div style={{ maxWidth: 320, margin: "64px auto" }}>
+        <ErrorState message={err instanceof Error ? err.message : "erro de configuração do ambiente"} />
+      </div>
+    );
+  }
+
   return (
     <>
-      <EnvBanner env={maintenanceEnv()} />
+      <EnvBanner env={env} />
       {invitationToken ? (
         <Invitation token={invitationToken} onDone={finishInvitation} />
       ) : (
