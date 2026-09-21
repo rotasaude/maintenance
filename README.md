@@ -93,6 +93,13 @@ por execução) e um token de serviço, e revoga o token ao final — mas
 cada execução**: é o custo aceito (a auditoria recusa `DELETE` por
 trigger), não tente apagá-los.
 
+`playwright.config.ts` roda com trace, screenshot e vídeo **desligados** de
+propósito: a suíte mostra dois segredos reais na tela (a chave TOTP da
+matrícula e o segredo do token de serviço), e um trace ou uma captura de
+tela guardados em `test-results/` os gravariam em claro. Para depurar uma
+falha, rode local com `npx playwright test --headed` ou `--debug` — nunca
+a partir de um artefato salvo em disco.
+
 ## Staging
 
 ```

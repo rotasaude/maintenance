@@ -15,7 +15,17 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://maintenance.localhost:5177",
-    trace: "retain-on-failure"
+    // Fix round 1 (achado Important da revisão): esta suíte mostra DOIS
+    // segredos reais na tela em algum momento — a chave TOTP da matrícula
+    // (Invitation, em texto) e o secretOnce do token de serviço (Tokens).
+    // trace/screenshot/video "on failure" gravariam esses segredos em
+    // claro dentro de test-results/*/trace.zip (que carrega DOM
+    // snapshots e capturas de tela). Sem artefato nenhum, de propósito —
+    // quem for depurar uma falha roda local com `--headed` ou `--debug`
+    // (README, seção E2E), nunca a partir de um trace salvo em disco.
+    trace: "off",
+    screenshot: "off",
+    video: "off"
     // O Chrome resolve *.localhost nativamente para 127.0.0.1 — confirmado
     // contra este stack (task-10-report.md). Se algum dia isso não valer
     // mais no host de quem roda a suíte, descomente:
