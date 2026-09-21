@@ -23,6 +23,9 @@ type Documents = {
     "\n  query CityAccounts($slug: String!) { city(slug: $slug) { slug accounts { login roles active mfaEnrolled } } }\n": typeof types.CityAccountsDocument,
     "\n  query CityCounts($slug: String!) {\n    city(slug: $slug) { slug counts { users conversations triages inboundMessages reportSnapshots consents } }\n  }\n": typeof types.CityCountsDocument,
     "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n": typeof types.CityOperationsDocument,
+    "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n": typeof types.MaintainersDocument,
+    "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": typeof types.InviteMaintainerDocument,
+    "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": typeof types.DeactivateMaintainerDocument,
 };
 const documents: Documents = {
     "query Me { me { id emailAddress } }": types.MeDocument,
@@ -34,6 +37,9 @@ const documents: Documents = {
     "\n  query CityAccounts($slug: String!) { city(slug: $slug) { slug accounts { login roles active mfaEnrolled } } }\n": types.CityAccountsDocument,
     "\n  query CityCounts($slug: String!) {\n    city(slug: $slug) { slug counts { users conversations triages inboundMessages reportSnapshots consents } }\n  }\n": types.CityCountsDocument,
     "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n": types.CityOperationsDocument,
+    "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n": types.MaintainersDocument,
+    "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": types.InviteMaintainerDocument,
+    "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": types.DeactivateMaintainerDocument,
 };
 
 /**
@@ -86,6 +92,18 @@ export function graphql(source: "\n  query CityCounts($slug: String!) {\n    cit
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n"): (typeof documents)["\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n"): (typeof documents)["\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"): (typeof documents)["\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};
