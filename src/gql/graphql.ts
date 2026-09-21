@@ -1,0 +1,336 @@
+/* eslint-disable */
+import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+export type Maybe<T> = T | null;
+export type InputMaybe<T> = Maybe<T>;
+export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
+export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
+export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
+/** All built-in and custom scalars, mapped to their actual values */
+export type Scalars = {
+  ID: { input: string; output: string; }
+  String: { input: string; output: string; }
+  Boolean: { input: boolean; output: boolean; }
+  Int: { input: number; output: number; }
+  Float: { input: number; output: number; }
+  /** An ISO 8601-encoded datetime */
+  ISO8601DateTime: { input: string; output: string; }
+};
+
+/** Destinatário de alerta urgente da cidade. Só configuração. */
+export type AlertRecipient = {
+  __typename?: 'AlertRecipient';
+  channel: Scalars['String']['output'];
+  destination: Scalars['String']['output'];
+  escalationOrder: Scalars['Int']['output'];
+};
+
+/** Um registro da auditoria de manutenção */
+export type AuditEvent = {
+  __typename?: 'AuditEvent';
+  correlationId?: Maybe<Scalars['String']['output']>;
+  /** Resolvido na leitura: o evento guarda id, nunca e-mail */
+  login?: Maybe<Scalars['String']['output']>;
+  maintainerId?: Maybe<Scalars['ID']['output']>;
+  module: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  occurredAt: Scalars['ISO8601DateTime']['output'];
+  outcome: Scalars['String']['output'];
+};
+
+/** Uma cidade. Só este tipo alcança o banco da cidade, e só por city(slug:). */
+export type City = {
+  __typename?: 'City';
+  accounts: Array<CityAccount>;
+  alertRecipients: Array<AlertRecipient>;
+  channel?: Maybe<CityChannel>;
+  consentTermVersion?: Maybe<Scalars['String']['output']>;
+  counts?: Maybe<CityCounts>;
+  createdAt: Scalars['ISO8601DateTime']['output'];
+  name: Scalars['String']['output'];
+  operations?: Maybe<CityOperations>;
+  profile?: Maybe<CityProfile>;
+  protocols: Array<ProtocolDefinition>;
+  schemaBehind: Scalars['Boolean']['output'];
+  schemaVersion?: Maybe<Scalars['String']['output']>;
+  slug: Scalars['String']['output'];
+  status: CityStatus;
+  uf?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * Conta de staff da prefeitura, no banco da cidade — não é cidadão.
+ * password_digest, otp_secret e recovery codes ficam de fora por regra: o que
+ * serve para operar é saber SE a conta exige MFA.
+ */
+export type CityAccount = {
+  __typename?: 'CityAccount';
+  active: Scalars['Boolean']['output'];
+  login: Scalars['String']['output'];
+  mfaEnrolled: Scalars['Boolean']['output'];
+  roles: Array<Scalars['String']['output']>;
+};
+
+/** Canal de WhatsApp da cidade. O access_token é cifrado e NUNCA sai daqui. */
+export type CityChannel = {
+  __typename?: 'CityChannel';
+  active: Scalars['Boolean']['output'];
+  displayPhoneNumber: Scalars['String']['output'];
+  phoneNumberId: Scalars['String']['output'];
+  wabaId?: Maybe<Scalars['String']['output']>;
+};
+
+/** Contagens do banco da cidade — nenhum dado de cidadão sai daqui, só números. */
+export type CityCounts = {
+  __typename?: 'CityCounts';
+  consents: Scalars['Int']['output'];
+  conversations: Scalars['Int']['output'];
+  inboundMessages: Scalars['Int']['output'];
+  reportSnapshots: Scalars['Int']['output'];
+  triages: Scalars['Int']['output'];
+  users: Scalars['Int']['output'];
+};
+
+/**
+ * Sinais operacionais da cidade — metadado e contagem, nunca conteúdo de cidadão
+ * (payload de evento, conteúdo/assinatura de relatório, mensagem de exceção).
+ */
+export type CityOperations = {
+  __typename?: 'CityOperations';
+  dashboardMetrics: Array<DashboardMetric>;
+  domainEvents: Array<DomainEvent>;
+  failedJobs: Array<FailedJob>;
+  reportSnapshots: Array<ReportSnapshot>;
+};
+
+/** Identidade da cidade no banco dela. */
+export type CityProfile = {
+  __typename?: 'CityProfile';
+  ibgeCode?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  uf?: Maybe<Scalars['String']['output']>;
+};
+
+export type CityStatus =
+  | 'ACTIVE'
+  | 'ARCHIVED'
+  | 'PROVISIONING'
+  | 'SUSPENDED';
+
+/** Uma cidade do catálogo. Nada aqui vem do banco da cidade. */
+export type CitySummary = {
+  __typename?: 'CitySummary';
+  createdAt: Scalars['ISO8601DateTime']['output'];
+  name: Scalars['String']['output'];
+  schemaBehind: Scalars['Boolean']['output'];
+  schemaVersion?: Maybe<Scalars['String']['output']>;
+  slug: Scalars['String']['output'];
+  status: CityStatus;
+  uf?: Maybe<Scalars['String']['output']>;
+};
+
+/** Autogenerated return type of CreateMaintenanceToken. */
+export type CreateMaintenanceTokenPayload = {
+  __typename?: 'CreateMaintenanceTokenPayload';
+  errors: Array<UserError>;
+  ok: Scalars['Boolean']['output'];
+  secretOnce?: Maybe<Scalars['String']['output']>;
+};
+
+/**
+ * Agregado pré-computado do dashboard da cidade. `label` é a chave dentro de
+ * dimension/period (ex.: um tier, uma prioridade, "total") — nunca dado de cidadão.
+ */
+export type DashboardMetric = {
+  __typename?: 'DashboardMetric';
+  computedAt: Scalars['ISO8601DateTime']['output'];
+  dimension: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  period: Scalars['String']['output'];
+  value: Scalars['Int']['output'];
+};
+
+/** Autogenerated return type of DeactivateMaintainer. */
+export type DeactivateMaintainerPayload = {
+  __typename?: 'DeactivateMaintainerPayload';
+  errors: Array<UserError>;
+  ok: Scalars['Boolean']['output'];
+};
+
+/** Evento de domínio da cidade, só metadado — o `payload` é dado de cidadão e nunca sai daqui. */
+export type DomainEvent = {
+  __typename?: 'DomainEvent';
+  name: Scalars['String']['output'];
+  occurredAt: Scalars['ISO8601DateTime']['output'];
+  publishedAt?: Maybe<Scalars['ISO8601DateTime']['output']>;
+};
+
+/**
+ * Execução falha do Solid Queue da cidade (o Solid Queue de cada cidade mora no
+ * banco dela). A MENSAGEM da exceção é texto não controlado que pode carregar dado
+ * de cidadão (um telefone, o corpo de uma mensagem, num erro de validação) — só a
+ * CLASSE da exceção sai, nunca a mensagem nem os argumentos do job.
+ */
+export type FailedJob = {
+  __typename?: 'FailedJob';
+  className: Scalars['String']['output'];
+  errorClass?: Maybe<Scalars['String']['output']>;
+  failedAt: Scalars['ISO8601DateTime']['output'];
+};
+
+/** Autogenerated return type of InviteMaintainer. */
+export type InviteMaintainerPayload = {
+  __typename?: 'InviteMaintainerPayload';
+  errors: Array<UserError>;
+  ok: Scalars['Boolean']['output'];
+};
+
+/** Uma conta da API de manutenção */
+export type Maintainer = {
+  __typename?: 'Maintainer';
+  /** Falso depois de desativado */
+  active: Scalars['Boolean']['output'];
+  createdAt: Scalars['ISO8601DateTime']['output'];
+  emailAddress: Scalars['String']['output'];
+  /** Senha e TOTP definidos pelo convite */
+  enrolled: Scalars['Boolean']['output'];
+  id: Scalars['ID']['output'];
+};
+
+/** Metadado de um token de serviço. O segredo NUNCA aparece aqui. */
+export type MaintenanceToken = {
+  __typename?: 'MaintenanceToken';
+  access: Scalars['String']['output'];
+  citySlugs: Array<Scalars['String']['output']>;
+  expiresAt: Scalars['ISO8601DateTime']['output'];
+  id: Scalars['ID']['output'];
+  lastUsedAt?: Maybe<Scalars['ISO8601DateTime']['output']>;
+  maintainerId: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  revokedAt?: Maybe<Scalars['ISO8601DateTime']['output']>;
+};
+
+/** Escritas da API de manutenção */
+export type Mutation = {
+  __typename?: 'Mutation';
+  /** Cria um token de serviço. O segredo volta UMA vez, em secretOnce. */
+  createMaintenanceToken?: Maybe<CreateMaintenanceTokenPayload>;
+  /** Desativa um mantenedor, encerrando sessões e tokens na hora */
+  deactivateMaintainer?: Maybe<DeactivateMaintainerPayload>;
+  /** Convida um mantenedor. O token do convite NUNCA volta na resposta. */
+  inviteMaintainer?: Maybe<InviteMaintainerPayload>;
+  /** Revoga um token de serviço na hora */
+  revokeMaintenanceToken?: Maybe<RevokeMaintenanceTokenPayload>;
+};
+
+
+/** Escritas da API de manutenção */
+export type MutationCreateMaintenanceTokenArgs = {
+  access: Scalars['String']['input'];
+  citySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  code: Scalars['String']['input'];
+  expiresAt: Scalars['ISO8601DateTime']['input'];
+  name: Scalars['String']['input'];
+};
+
+
+/** Escritas da API de manutenção */
+export type MutationDeactivateMaintainerArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+/** Escritas da API de manutenção */
+export type MutationInviteMaintainerArgs = {
+  code: Scalars['String']['input'];
+  emailAddress: Scalars['String']['input'];
+};
+
+
+/** Escritas da API de manutenção */
+export type MutationRevokeMaintenanceTokenArgs = {
+  id: Scalars['ID']['input'];
+};
+
+/** Definição de protocolo, metadado apenas. */
+export type ProtocolDefinition = {
+  __typename?: 'ProtocolDefinition';
+  name: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+/** Consultas da API de manutenção */
+export type Query = {
+  __typename?: 'Query';
+  /** Auditoria de manutenção, só para sessão humana */
+  auditEvents: Array<AuditEvent>;
+  /** Catálogo de cidades, sem abrir conexão com nenhuma delas */
+  cities: Array<CitySummary>;
+  /** Uma cidade. Único caminho para dentro do banco dela. */
+  city?: Maybe<City>;
+  /** Todos os mantenedores, por e-mail. Só sessão humana. */
+  maintainers: Array<Maintainer>;
+  /** Tokens de serviço, metadado apenas */
+  maintenanceTokens: Array<MaintenanceToken>;
+  /** O mantenedor da sessão corrente */
+  me: Maintainer;
+};
+
+
+/** Consultas da API de manutenção */
+export type QueryAuditEventsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  maintainerId?: InputMaybe<Scalars['ID']['input']>;
+  module?: InputMaybe<Scalars['String']['input']>;
+  outcome?: InputMaybe<Scalars['String']['input']>;
+  since?: InputMaybe<Scalars['ISO8601DateTime']['input']>;
+  until?: InputMaybe<Scalars['ISO8601DateTime']['input']>;
+};
+
+
+/** Consultas da API de manutenção */
+export type QueryCitiesArgs = {
+  status?: InputMaybe<CityStatus>;
+};
+
+
+/** Consultas da API de manutenção */
+export type QueryCityArgs = {
+  slug: Scalars['String']['input'];
+};
+
+/**
+ * Relatório congelado de uma triage, só metadado. `payload`, `outcome`,
+ * `signature` e `token` são conteúdo/segredo — nunca saem daqui.
+ */
+export type ReportSnapshot = {
+  __typename?: 'ReportSnapshot';
+  createdAt: Scalars['ISO8601DateTime']['output'];
+  expiresAt?: Maybe<Scalars['ISO8601DateTime']['output']>;
+  id: Scalars['ID']['output'];
+};
+
+/** Autogenerated return type of RevokeMaintenanceToken. */
+export type RevokeMaintenanceTokenPayload = {
+  __typename?: 'RevokeMaintenanceTokenPayload';
+  errors: Array<UserError>;
+  ok: Scalars['Boolean']['output'];
+};
+
+/** Erro de regra de negócio, já esperado — não é falha de sistema */
+export type UserError = {
+  __typename?: 'UserError';
+  message: Scalars['String']['output'];
+  /** Campo de entrada que causou o erro, quando há um */
+  path?: Maybe<Scalars['String']['output']>;
+};
+
+export type MeQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type MeQuery = { __typename?: 'Query', me: { __typename?: 'Maintainer', id: string, emailAddress: string } };
+
+
+export const MeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"emailAddress"}}]}}]}}]} as unknown as DocumentNode<MeQuery, MeQueryVariables>;
