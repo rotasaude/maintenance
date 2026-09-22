@@ -22,7 +22,10 @@ export type ProtocolAction = {
 // Protocols::Signatures::REQUIRED na API.
 export const REQUIRED_SIGNATURES = 2;
 
-// Mesma frase de Protocols::Signatures.shortfall_message.
+// Reproduz só o núcleo "falta/faltam" de Protocols::Signatures.shortfall_message
+// na API — a frase de lá é mais longa ("falta 1 assinatura de publicação;
+// revisores elegíveis na cidade: N"); aqui o "de quê" e "quantos revisores"
+// já aparecem como texto próprio ao redor desta mensagem.
 export function shortfallMessage(missing: number): string {
   return missing === 1 ? "falta 1 assinatura" : `faltam ${missing} assinaturas`;
 }

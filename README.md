@@ -62,7 +62,10 @@ A aba **Protocolos** do detalhe de cidade lista todas as versões com o estado
 das assinaturas (publicação e ativação, N/2) e os revisores elegíveis da
 cidade, e oferece só as ações que o status permite: enviar para revisão,
 publicar, ativar, aposentar e reverter. Publicar, ativar, aposentar e
-reverter pedem o código do autenticador; reverter pede também um motivo.
+reverter pedem o código do autenticador; reverter pede também um motivo. A
+lista mostra até 100 versões — as não aposentadas primeiro (nome asc,
+versão desc), aposentadas por último, para uma aposentada nunca empurrar uma
+versão viva para fora do teto.
 
 O mantenedor **nunca assina** (ADR-0016): publicar e ativar só passam quando
 dois revisores da cidade — que não editaram a versão — já assinaram pelo
@@ -112,9 +115,12 @@ A suíte cria o próprio mantenedor (`rake maintainer:invite`, e-mail único
 por execução) e um token de serviço, e revoga o token ao final — mas
 **deixa um mantenedor e linhas de auditoria imutáveis no banco de dev a
 cada execução**: é o custo aceito (a auditoria recusa `DELETE` por
-trigger), não tente apagá-los. Cada execução também deixa **um protocolo de
-rascunho, em revisão, com nome `e2e-…`, em curitiba** — e as linhas
-append-only de contribuição dele.
+trigger), não tente apagá-los. Cada execução também deixa **um protocolo
+`e2e-…` em curitiba, aposentado ao final** (rascunho → em revisão →
+aposentado, pelo mesmo teste "protocolos") — junto com os eventos de
+domínio da cidade que cada transição emite (`protocol.draft_saved`,
+`protocol.submitted_for_review`, `protocol.retired`) e as linhas de
+auditoria da plataforma correspondentes.
 
 `playwright.config.ts` roda com trace, screenshot e vídeo **desligados** de
 propósito: a suíte mostra dois segredos reais na tela (a chave TOTP da
