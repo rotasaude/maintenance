@@ -156,6 +156,14 @@ test.describe.serial("fluxo de manutenção ponta a ponta", () => {
     await expect(refreshed.getByRole("button", { name: "Publicar" })).toBeDisabled();
     await expect(refreshed.getByText(/falta|faltam|revisor\(es\) elegível\(is\)/)).toBeVisible();
 
+    // Aposentar não depende de assinatura (só step-up): exercita uma ação de
+    // ciclo de vida de verdade, ponta a ponta, com o mesmo mantenedor autenticador
+    // já em sessão — e deixa a linha aposentada (afunda no fim da lista, A1).
+    await refreshed.getByRole("button", { name: "Aposentar" }).click();
+    await page.getByLabel("Código do autenticador", { exact: true }).fill(await freshCode(secret));
+    await page.getByRole("button", { name: "Confirmar" }).click();
+    await expect(page.getByRole("status").filter({ hasText: `Aposentar concluído: ${name} v1` })).toBeVisible();
+
     await page.getByRole("button", { name: "voltar" }).click();
   });
 
