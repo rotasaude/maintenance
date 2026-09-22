@@ -1,0 +1,202 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { ProtocolsTab } from "./ProtocolsTab";
+
+afterEach(cleanup);
+
+function reply(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
+function bodyOf(call: unknown[]): { query: string; variables: Record<string, unknown> } {
+  return JSON.parse((call[1] as RequestInit).body as string);
+}
+function calls(fetchMock: ReturnType<typeof vi.fn>, operation: string) {
+  return fetchMock.mock.calls.filter((call) => bodyOf(call).query.includes(operation));
+}
+
+function v(overrides: Record<string, unknown>) {
+  return {
+    name: "dengue", version: 1, status: "draft",
+    publicationSignatures: 0, publicationMissing: 2, activationSignatures: 0, activationMissing: 2,
+    eligibleReviewers: 3, revertible: false, ...overrides
+  };
+}
+function versionsReply(rows: unknown[]) {
+  return reply(200, { data: { city: { slug: "sp", protocolVersions: rows } } });
+}
+function mutationReply(field: string, ok: boolean, errors: unknown[] = []) {
+  return reply(200, { data: { [field]: { ok, errors } } });
+}
+
+function renderTab() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  function wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  }
+  return render(<ProtocolsTab slug="sp" />, { wrapper });
+}
+
+describe("ProtocolsTab", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  // `route` responde a consulta de versões com `rows` e cada mutation pelo
+  // mapa `mutations` (nome do campo → Response).
+  function route(rows: unknown[], mutations: Record<string, () => Response> = {}) {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityProtocolVersions")) return Promise.resolve(versionsReply(rows));
+      const hit = Object.keys(mutations).find((field) => body.query.includes(field));
+      return Promise.resolve(hit ? mutations[hit]() : reply(500, {}));
+    });
+  }
+
+  it("mostra status, assinaturas N/2 e revisores; só as ações do status", async () => {
+    route([ v({ status: "in_review", version: 2, publicationSignatures: 1, publicationMissing: 1 }) ]);
+    renderTab();
+
+    const table = within(await screen.findByRole("table"));
+    expect(table.getByText("em revisão")).not.toBeNull();
+    expect(table.getByText("1/2")).not.toBeNull();
+    expect(table.getByRole("button", { name: "Publicar" })).not.toBeNull();
+    expect(table.getByRole("button", { name: "Aposentar" })).not.toBeNull();
+    expect(table.queryByRole("button", { name: "Ativar" })).toBeNull();
+  });
+
+  it("publicar fica desabilitado com o motivo quando falta assinatura", async () => {
+    route([ v({ status: "in_review", publicationMissing: 1 }) ]);
+    renderTab();
+
+    const publish = await screen.findByRole("button", { name: "Publicar" });
+    expect((publish as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("falta 1 assinatura")).not.toBeNull();
+  });
+
+  it("enviar para revisão não pede código e manda name/version/citySlug", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "draft" }) ], { submitProtocolForReview: () => mutationReply("submitProtocolForReview", true) });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    expect(screen.queryByLabelText("Código do autenticador")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(calls(fetchMock, "submitProtocolForReview")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "submitProtocolForReview")[0]).variables)
+      .toEqual({ citySlug: "sp", name: "dengue", version: 1 });
+    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Enviar para revisão concluído: dengue v1");
+  });
+
+  it("sucesso invalida a lista (nova consulta de versões)", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "draft" }) ], { submitProtocolForReview: () => mutationReply("submitProtocolForReview", true) });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(calls(fetchMock, "query CityProtocolVersions")).toHaveLength(2));
+  });
+
+  it("aposentar pede código, envia e limpa o código mesmo na recusa", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "published", activationMissing: 0 }) ], {
+      retireProtocol: () => mutationReply("retireProtocol", false, [ { path: "code", message: "código inválido" } ])
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Aposentar" }));
+    await user.type(screen.getByLabelText("Código do autenticador"), "123456");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(calls(fetchMock, "retireProtocol")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "retireProtocol")[0]).variables)
+      .toEqual({ citySlug: "sp", name: "dengue", version: 1, code: "123456" });
+    expect(await screen.findByText("código inválido")).not.toBeNull();
+    expect(screen.getByText("Tentativas erradas contam para o bloqueio da conta.")).not.toBeNull();
+    expect((screen.getByLabelText("Código do autenticador") as HTMLInputElement).value).toBe("");
+  });
+
+  it("recusa de domínio fora de code/reason aparece no painel, que continua aberto", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "in_review", publicationMissing: 0 }) ], {
+      publishProtocol: () => mutationReply("publishProtocol", false, [ { path: "version", message: "falta 1 assinatura" } ])
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Publicar" }));
+    await user.type(screen.getByLabelText("Código do autenticador"), "123456");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("falta 1 assinatura")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Confirmar" })).not.toBeNull();
+  });
+
+  it("reverter pede motivo e código e manda name/reason/code (sem version)", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true }) ], {
+      revertProtocolActivation: () => mutationReply("revertProtocolActivation", true)
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    expect(screen.getByText("volta para a versão ativada antes desta, sem assinatura nova")).not.toBeNull();
+    await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(calls(fetchMock, "revertProtocolActivation")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "revertProtocolActivation")[0]).variables)
+      .toEqual({ citySlug: "sp", name: "dengue", reason: "regra errada em produção", code: "654321" });
+  });
+
+  it("erro GraphQL de cidade (data nula) aparece com código e a lista é recarregada", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "draft" }) ], {
+      submitProtocolForReview: () => reply(200, {
+        data: null,
+        errors: [ { message: "cidade não respondeu; resultado desconhecido (correlation abc)", extensions: { code: "CITY_UNREACHABLE" } } ]
+      })
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("CITY_UNREACHABLE — cidade não respondeu; resultado desconhecido (correlation abc)")).not.toBeNull();
+    await waitFor(() => expect(calls(fetchMock, "query CityProtocolVersions")).toHaveLength(2));
+  });
+
+  it("cancelar fecha o painel sem chamar mutation", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "draft" }) ]);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
+    expect(calls(fetchMock, "submitProtocolForReview")).toHaveLength(0);
+  });
+
+  it("cidade inalcançável na leitura mostra o erro do campo", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(reply(200, {
+      // protocolVersions é não nulo: o erro do campo nulifica `city` inteira.
+      data: { city: null },
+      errors: [ { message: "cidade indisponível", path: [ "city", "protocolVersions" ], extensions: { code: "CITY_UNREACHABLE" } } ]
+    })));
+    renderTab();
+
+    expect(await screen.findByText("CITY_UNREACHABLE — cidade indisponível")).not.toBeNull();
+  });
+
+  it("sem versão nenhuma, estado vazio", async () => {
+    route([]);
+    renderTab();
+    expect(await screen.findByText("nenhum protocolo")).not.toBeNull();
+  });
+});

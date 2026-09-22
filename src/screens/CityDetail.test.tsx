@@ -63,7 +63,7 @@ describe("CityDetail", () => {
     // Nenhuma aba consultada ainda — só a consulta de topo saiu.
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(operationCalls(fetchMock, "CityHeader")).toHaveLength(1);
-    for (const op of [ "CityProfile", "CityProtocols", "CityRecipients", "CityAccounts", "CityCounts", "CityOperations" ]) {
+    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityAccounts", "CityCounts", "CityOperations" ]) {
       expect(operationCalls(fetchMock, op)).toHaveLength(0);
     }
 
@@ -81,7 +81,7 @@ describe("CityDetail", () => {
     expect(await screen.findByText("op1")).not.toBeNull();
 
     // Abrir "Contas" não disparou nenhuma outra aba.
-    for (const op of [ "CityProfile", "CityProtocols", "CityRecipients", "CityCounts", "CityOperations" ]) {
+    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityCounts", "CityOperations" ]) {
       expect(operationCalls(fetchMock, op)).toHaveLength(0);
     }
   });
@@ -193,7 +193,7 @@ describe("CityDetail", () => {
 
     await waitFor(() => expect(operationCalls(fetchMock, "CityAccounts")).toHaveLength(2));
     expect(operationCalls(fetchMock, "CityHeader")).toHaveLength(1);
-    for (const op of [ "CityProfile", "CityProtocols", "CityRecipients", "CityCounts", "CityOperations" ]) {
+    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityCounts", "CityOperations" ]) {
       expect(operationCalls(fetchMock, op)).toHaveLength(0);
     }
   });

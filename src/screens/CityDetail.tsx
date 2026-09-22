@@ -10,12 +10,15 @@ import { DataTable } from "../components/DataTable";
 import { Tag } from "../components/Tag";
 import { Button } from "../components/Button";
 import { STATUS_LABELS } from "./Cities";
+import { ProtocolsTab } from "./ProtocolsTab";
 
 // Detalhe de uma cidade (Task 6). O topo (plataforma + canal) é UMA
 // consulta, disparada ao abrir. Cada aba é OUTRA consulta, só disparada
 // quando a aba é aberta (`enabled: activeTab === <chave>`) — abrir o
-// detalhe nunca consulta profile/protocols/alertRecipients/accounts/
-// counts/operations; abrir uma aba consulta só aquele campo.
+// detalhe nunca consulta profile/alertRecipients/accounts/counts/
+// operations; abrir uma aba consulta só aquele campo. A aba Protocolos é a
+// exceção: ela consulta pelo próprio componente (`ProtocolsTab`), e também
+// só quando aberta, porque o componente só monta com a aba ativa.
 const CityHeaderQuery = graphql(`
   query CityHeader($slug: String!) {
     city(slug: $slug) {
@@ -27,9 +30,6 @@ const CityHeaderQuery = graphql(`
 
 const CityProfileQuery = graphql(`
   query CityProfile($slug: String!) { city(slug: $slug) { slug consentTermVersion profile { name uf ibgeCode } } }
-`);
-const CityProtocolsQuery = graphql(`
-  query CityProtocols($slug: String!) { city(slug: $slug) { slug protocols { name version status } } }
 `);
 const CityRecipientsQuery = graphql(`
   query CityRecipients($slug: String!) {
@@ -143,12 +143,6 @@ export function CityDetail({ slug, onBack }: { slug: string; onBack(): void }) {
     enabled: activeTab === "profile",
     staleTime: Infinity
   });
-  const protocols = useQuery({
-    queryKey: [ "city", slug, "protocols" ],
-    queryFn: () => gql(CityProtocolsQuery, { slug }),
-    enabled: activeTab === "protocols",
-    staleTime: Infinity
-  });
   const alertRecipients = useQuery({
     queryKey: [ "city", slug, "alertRecipients" ],
     queryFn: () => gql(CityRecipientsQuery, { slug }),
@@ -245,18 +239,7 @@ export function CityDetail({ slug, onBack }: { slug: string; onBack(): void }) {
             </dl>
           ))}
 
-          {activeTab === "protocols" && renderTab(protocols, "protocols", (c) => (
-            c.protocols.length === 0 ? <EmptyState message="nenhum protocolo" /> : (
-              <DataTable
-                columns={[
-                  { key: "name", label: "Nome" },
-                  { key: "version", label: "Versão" },
-                  { key: "status", label: "Status" }
-                ]}
-                rows={c.protocols}
-              />
-            )
-          ))}
+          {activeTab === "protocols" && <ProtocolsTab slug={slug} />}
 
           {activeTab === "alertRecipients" && renderTab(alertRecipients, "alertRecipients", (c) => (
             c.alertRecipients.length === 0 ? <EmptyState message="nenhum destinatário" /> : (
