@@ -20,13 +20,18 @@ type Documents = {
     "\n  query Cities($status: CityStatus) {\n    cities(status: $status) { slug name uf status schemaVersion schemaBehind createdAt }\n  }\n": typeof types.CitiesDocument,
     "\n  query CityHeader($slug: String!) {\n    city(slug: $slug) {\n      slug name uf status schemaVersion schemaBehind createdAt\n      channel { phoneNumberId wabaId displayPhoneNumber active }\n    }\n  }\n": typeof types.CityHeaderDocument,
     "\n  query CityProfile($slug: String!) { city(slug: $slug) { slug consentTermVersion profile { name uf ibgeCode } } }\n": typeof types.CityProfileDocument,
-    "\n  query CityProtocols($slug: String!) { city(slug: $slug) { slug protocols { name version status } } }\n": typeof types.CityProtocolsDocument,
     "\n  query CityRecipients($slug: String!) {\n    city(slug: $slug) { slug alertRecipients { channel destination escalationOrder } }\n  }\n": typeof types.CityRecipientsDocument,
     "\n  query CityAccounts($slug: String!) { city(slug: $slug) { slug accounts { login roles active mfaEnrolled } } }\n": typeof types.CityAccountsDocument,
     "\n  query CityCounts($slug: String!) {\n    city(slug: $slug) { slug counts { users conversations triages inboundMessages reportSnapshots consents } }\n  }\n": typeof types.CityCountsDocument,
     "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n": typeof types.CityOperationsDocument,
     "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": typeof types.InviteMaintainerDocument,
     "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": typeof types.DeactivateMaintainerDocument,
+    "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible\n      }\n    }\n  }\n": typeof types.CityProtocolVersionsDocument,
+    "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n": typeof types.SubmitProtocolForReviewDocument,
+    "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.PublishProtocolDocument,
+    "\n  mutation ActivateProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    activateProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.ActivateProtocolDocument,
+    "\n  mutation RetireProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    retireProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.RetireProtocolDocument,
+    "\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) { ok errors { path message } }\n  }\n": typeof types.RevertProtocolActivationDocument,
     "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n": typeof types.MaintenanceTokensDocument,
     "\n  query CitiesForTokenScope { cities { slug name } }\n": typeof types.CitiesForTokenScopeDocument,
     "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n": typeof types.CreateMaintenanceTokenDocument,
@@ -39,13 +44,18 @@ const documents: Documents = {
     "\n  query Cities($status: CityStatus) {\n    cities(status: $status) { slug name uf status schemaVersion schemaBehind createdAt }\n  }\n": types.CitiesDocument,
     "\n  query CityHeader($slug: String!) {\n    city(slug: $slug) {\n      slug name uf status schemaVersion schemaBehind createdAt\n      channel { phoneNumberId wabaId displayPhoneNumber active }\n    }\n  }\n": types.CityHeaderDocument,
     "\n  query CityProfile($slug: String!) { city(slug: $slug) { slug consentTermVersion profile { name uf ibgeCode } } }\n": types.CityProfileDocument,
-    "\n  query CityProtocols($slug: String!) { city(slug: $slug) { slug protocols { name version status } } }\n": types.CityProtocolsDocument,
     "\n  query CityRecipients($slug: String!) {\n    city(slug: $slug) { slug alertRecipients { channel destination escalationOrder } }\n  }\n": types.CityRecipientsDocument,
     "\n  query CityAccounts($slug: String!) { city(slug: $slug) { slug accounts { login roles active mfaEnrolled } } }\n": types.CityAccountsDocument,
     "\n  query CityCounts($slug: String!) {\n    city(slug: $slug) { slug counts { users conversations triages inboundMessages reportSnapshots consents } }\n  }\n": types.CityCountsDocument,
     "\n  query CityOperations($slug: String!) {\n    city(slug: $slug) {\n      slug\n      operations {\n        domainEvents { name occurredAt publishedAt }\n        reportSnapshots { id createdAt expiresAt }\n        dashboardMetrics { dimension period label value computedAt }\n        failedJobs { className failedAt errorClass }\n      }\n    }\n  }\n": types.CityOperationsDocument,
     "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": types.InviteMaintainerDocument,
     "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": types.DeactivateMaintainerDocument,
+    "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible\n      }\n    }\n  }\n": types.CityProtocolVersionsDocument,
+    "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n": types.SubmitProtocolForReviewDocument,
+    "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.PublishProtocolDocument,
+    "\n  mutation ActivateProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    activateProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.ActivateProtocolDocument,
+    "\n  mutation RetireProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    retireProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.RetireProtocolDocument,
+    "\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) { ok errors { path message } }\n  }\n": types.RevertProtocolActivationDocument,
     "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n": types.MaintenanceTokensDocument,
     "\n  query CitiesForTokenScope { cities { slug name } }\n": types.CitiesForTokenScopeDocument,
     "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n": types.CreateMaintenanceTokenDocument,
@@ -93,10 +103,6 @@ export function graphql(source: "\n  query CityProfile($slug: String!) { city(sl
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query CityProtocols($slug: String!) { city(slug: $slug) { slug protocols { name version status } } }\n"): (typeof documents)["\n  query CityProtocols($slug: String!) { city(slug: $slug) { slug protocols { name version status } } }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
 export function graphql(source: "\n  query CityRecipients($slug: String!) {\n    city(slug: $slug) { slug alertRecipients { channel destination escalationOrder } }\n  }\n"): (typeof documents)["\n  query CityRecipients($slug: String!) {\n    city(slug: $slug) { slug alertRecipients { channel destination escalationOrder } }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -118,6 +124,30 @@ export function graphql(source: "\n  mutation InviteMaintainer($emailAddress: St
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"): (typeof documents)["\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible\n      }\n    }\n  }\n"): (typeof documents)["\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ActivateProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    activateProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation ActivateProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    activateProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RetireProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    retireProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation RetireProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    retireProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) { ok errors { path message } }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

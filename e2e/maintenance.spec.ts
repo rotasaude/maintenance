@@ -1,5 +1,5 @@
 import { test as base, expect, type Page } from "@playwright/test";
-import { inviteMaintainer, freshCode } from "./support";
+import { inviteMaintainer, freshCode, draftDefinition } from "./support";
 
 // e2e contra o stack de dev de verdade (Task 10, plano
 // 2026-09-18-maintenance-frontend-01): convite, matrícula, entrada em duas
@@ -7,7 +7,7 @@ import { inviteMaintainer, freshCode } from "./support";
 // pelo cookie real e por códigos TOTP de uso único de verdade (o que um
 // mock não pegaria).
 //
-// Os cinco testes abaixo rodam em SÉRIE (test.describe.serial +
+// Os seis testes abaixo rodam em SÉRIE (test.describe.serial +
 // workers: 1) e compartilham UMA página/contexto de navegador (fixture
 // `sharedPage`, escopo "worker"): é o mesmo mantenedor, a mesma sessão e o
 // mesmo mantenedor autenticador do início ao fim — como um operador faria
@@ -118,6 +118,51 @@ test.describe.serial("fluxo de manutenção ponta a ponta", () => {
     await expect(
       page.locator("xpath=//dt[text()='Usuários']/following-sibling::dd[1]")
     ).toHaveText(/^\d+$/);
+
+    await page.getByRole("button", { name: "voltar" }).click();
+  });
+
+  test("protocolos", async ({ sharedPage: page }) => {
+    const name = `e2e-${Date.now().toString(36)}`;
+
+    const saved = await page.evaluate(async ({ definition }) => {
+      const response = await fetch("/graphql", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-Rota-Maintenance": "1" },
+        body: JSON.stringify({
+          query: "mutation($citySlug: String!, $definition: JSON!) { saveProtocolDraft(citySlug: $citySlug, definition: $definition) { ok errors { path message } } }",
+          variables: { citySlug: "curitiba", definition }
+        })
+      });
+      return (await response.json()).data?.saveProtocolDraft;
+    }, { definition: draftDefinition(name) });
+    expect(saved?.ok).toBe(true);
+
+    await page.getByRole("button", { name: "Cidades", exact: true }).click();
+    await page.locator("tr", { hasText: "curitiba" }).click();
+    await page.getByRole("button", { name: "Protocolos", exact: true }).click();
+
+    const row = page.locator("tr", { hasText: name });
+    await expect(row.getByText("rascunho")).toBeVisible();
+
+    await row.getByRole("button", { name: "Enviar para revisão" }).click();
+    await page.getByRole("button", { name: "Confirmar" }).click();
+    await expect(page.getByRole("status").filter({ hasText: `Enviar para revisão concluído: ${name} v1` })).toBeVisible();
+
+    // O mantenedor editou esta versão e nunca assina: sem assinaturas, Publicar
+    // fica bloqueado com o motivo (qual dos dois depende dos revisores de dev).
+    const refreshed = page.locator("tr", { hasText: name });
+    await expect(refreshed.getByText("em revisão")).toBeVisible();
+    await expect(refreshed.getByRole("button", { name: "Publicar" })).toBeDisabled();
+    await expect(refreshed.getByText(/falta|faltam|revisor\(es\) elegível\(is\)/)).toBeVisible();
+
+    // Aposentar não depende de assinatura (só step-up): exercita uma ação de
+    // ciclo de vida de verdade, ponta a ponta, com o mesmo mantenedor autenticador
+    // já em sessão — e deixa a linha aposentada (afunda no fim da lista, A1).
+    await refreshed.getByRole("button", { name: "Aposentar" }).click();
+    await page.getByLabel("Código do autenticador", { exact: true }).fill(await freshCode(secret));
+    await page.getByRole("button", { name: "Confirmar" }).click();
+    await expect(page.getByRole("status").filter({ hasText: `Aposentar concluído: ${name} v1` })).toBeVisible();
 
     await page.getByRole("button", { name: "voltar" }).click();
   });
