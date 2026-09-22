@@ -73,16 +73,38 @@ type Pending = { row: Row; action: ProtocolAction };
 type FieldError = { path?: string | null; message: string };
 type Payload = { ok: boolean; errors: FieldError[] };
 
-// Uma função por ação: devolve o payload `{ ok, errors }` da mutation.
-async function run(slug: string, { row, action }: Pending, code: string, reason: string): Promise<Payload | null> {
+// Uma função por ação: devolve o payload `{ ok, errors }` da mutation E os
+// erros de campo do envelope GraphQL (F1) — uma recusa de CityMutation
+// (CITY_UNREACHABLE, CITY_WRITE_FAILED, CITY_OUT_OF_SCOPE,
+// CITY_BUDGET_EXCEEDED…) responde `data: { <campo>: null }` com um erro em
+// `errors`: `data` não é nulo, então `gql()` não lança — mas o payload da
+// mutation É nulo, e sem `fieldErrors` aqui essa recusa vira GENERIC_ERROR
+// silenciosa em vez de mostrar o código e o motivo reais.
+type RunResult = { payload: Payload | null; fieldErrors: GraphQLRefusal[] };
+
+async function run(slug: string, { row, action }: Pending, code: string, reason: string): Promise<RunResult> {
   const base = { citySlug: slug, name: row.name, version: row.version };
   switch (action.kind) {
-    case "submit": return (await gql(SubmitMutation, base)).data?.submitProtocolForReview ?? null;
-    case "publish": return (await gql(PublishMutation, { ...base, code })).data?.publishProtocol ?? null;
-    case "activate": return (await gql(ActivateMutation, { ...base, code })).data?.activateProtocol ?? null;
-    case "retire": return (await gql(RetireMutation, { ...base, code })).data?.retireProtocol ?? null;
-    case "revert":
-      return (await gql(RevertMutation, { citySlug: slug, name: row.name, reason, code })).data?.revertProtocolActivation ?? null;
+    case "submit": {
+      const r = await gql(SubmitMutation, base);
+      return { payload: r.data?.submitProtocolForReview ?? null, fieldErrors: r.fieldErrors };
+    }
+    case "publish": {
+      const r = await gql(PublishMutation, { ...base, code });
+      return { payload: r.data?.publishProtocol ?? null, fieldErrors: r.fieldErrors };
+    }
+    case "activate": {
+      const r = await gql(ActivateMutation, { ...base, code });
+      return { payload: r.data?.activateProtocol ?? null, fieldErrors: r.fieldErrors };
+    }
+    case "retire": {
+      const r = await gql(RetireMutation, { ...base, code });
+      return { payload: r.data?.retireProtocol ?? null, fieldErrors: r.fieldErrors };
+    }
+    case "revert": {
+      const r = await gql(RevertMutation, { citySlug: slug, name: row.name, reason, code });
+      return { payload: r.data?.revertProtocolActivation ?? null, fieldErrors: r.fieldErrors };
+    }
   }
 }
 
@@ -108,7 +130,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
   const mutation = useMutation({
     gcTime: 0,
     mutationFn: (vars: { pending: Pending; code: string; reason: string }) => run(slug, vars.pending, vars.code, vars.reason),
-    onSuccess: (payload, { pending: p }) => {
+    onSuccess: ({ payload, fieldErrors }, { pending: p }) => {
       setCode("");
       if (payload?.ok) {
         close();
@@ -116,10 +138,23 @@ export function ProtocolsTab({ slug }: { slug: string }) {
         void queryClient.invalidateQueries({ queryKey });
         return;
       }
-      const list = payload?.errors ?? [];
+      if (payload === null) {
+        // F1: recusa de CityMutation (data: { campo: null } + errors) —
+        // não é "tente de novo": mostra o código/motivo reais e relê a
+        // lista (o write pode ter comitado antes da recusa).
+        const refusal = fieldErrors[0];
+        if (refusal) {
+          setFormError(`${refusal.code} — ${refusal.message}`);
+          void queryClient.invalidateQueries({ queryKey });
+        } else {
+          setFormError(GENERIC_ERROR);
+        }
+        return;
+      }
+      const list = payload.errors ?? [];
       setErrors(list);
       const general = list.filter((e) => e.path !== "code" && e.path !== "reason");
-      setFormError(payload ? (general.map((e) => e.message).join(" ") || null) : GENERIC_ERROR);
+      setFormError(general.map((e) => e.message).join(" ") || null);
     },
     onError: (err) => {
       setCode("");

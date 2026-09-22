@@ -154,12 +154,16 @@ describe("ProtocolsTab", () => {
       .toEqual({ citySlug: "sp", name: "dengue", reason: "regra errada em produção", code: "654321" });
   });
 
-  it("erro GraphQL de cidade (data nula) aparece com código e a lista é recarregada", async () => {
+  it("recusa de CityMutation (data com o campo nulo) aparece com código e a lista é recarregada", async () => {
     const user = userEvent.setup();
     route([ v({ status: "draft" }) ], {
       submitProtocolForReview: () => reply(200, {
-        data: null,
-        errors: [ { message: "cidade não respondeu; resultado desconhecido (correlation abc)", extensions: { code: "CITY_UNREACHABLE" } } ]
+        data: { submitProtocolForReview: null },
+        errors: [ {
+          message: "cidade não respondeu; resultado desconhecido (correlation abc)",
+          path: [ "submitProtocolForReview" ],
+          extensions: { code: "CITY_UNREACHABLE" }
+        } ]
       })
     });
     renderTab();
@@ -169,6 +173,17 @@ describe("ProtocolsTab", () => {
 
     expect(await screen.findByText("CITY_UNREACHABLE — cidade não respondeu; resultado desconhecido (correlation abc)")).not.toBeNull();
     await waitFor(() => expect(calls(fetchMock, "query CityProtocolVersions")).toHaveLength(2));
+  });
+
+  it("erro lançado (HTTP 500) ainda aparece como recusa", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "draft" }) ], { submitProtocolForReview: () => reply(500, {}) });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("a API recusou a requisição")).not.toBeNull();
   });
 
   it("cancelar fecha o painel sem chamar mutation", async () => {
