@@ -167,7 +167,17 @@ export function ProtocolsTab({ slug }: { slug: string }) {
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (pending) mutation.mutate({ pending, code, reason });
+    if (!pending) return;
+
+    // F4: recusa local antes de gastar um código/motivo na API — um código
+    // vazio ainda conta para o bloqueio da conta, e um motivo vazio gastaria
+    // um TOTP de uso único (freshCode) para depois falhar do mesmo jeito.
+    const local: FieldError[] = [];
+    if (pending.action.stepUp && !code.trim()) local.push({ path: "code", message: "informe o código do autenticador" });
+    if (pending.action.needsReason && !reason.trim()) local.push({ path: "reason", message: "informe o motivo" });
+    if (local.length > 0) { setErrors(local); return; }
+
+    mutation.mutate({ pending, code, reason });
   }
 
   const codeError = errors.find((e) => e.path === "code");
@@ -180,7 +190,9 @@ export function ProtocolsTab({ slug }: { slug: string }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div><Button onClick={() => void query.refetch()} busy={query.isFetching}>atualizar</Button></div>
+      <div>
+        <Button onClick={() => { setDone(null); void query.refetch(); }} busy={query.isFetching}>atualizar</Button>
+      </div>
       {query.isPending && <p>carregando…</p>}
       {query.isError && <ErrorState message={query.error instanceof Error ? query.error.message : "erro inesperado"} />}
       {fieldError && <ErrorState message={`${fieldError.code} — ${fieldError.message}`} />}
@@ -203,7 +215,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {actionsFor(row).map((action) => (
                     <div key={action.kind} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <Button onClick={() => open(row, action)} disabled={action.disabledReason !== null}>{action.label}</Button>
+                      <Button onClick={() => open(row, action)} disabled={action.disabledReason !== null || mutation.isPending}>{action.label}</Button>
                       {action.disabledReason && <small style={{ fontSize: 11, color: "var(--ink3)" }}>{action.disabledReason}</small>}
                     </div>
                   ))}
@@ -235,7 +247,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
             )}
             <div style={{ display: "flex", gap: 8 }}>
               <Button type="submit" busy={mutation.isPending}>Confirmar</Button>
-              <Button onClick={close}>Cancelar</Button>
+              <Button onClick={close} disabled={mutation.isPending}>Cancelar</Button>
             </div>
           </form>
         </Panel>

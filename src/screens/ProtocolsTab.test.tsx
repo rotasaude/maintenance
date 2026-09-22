@@ -186,6 +186,71 @@ describe("ProtocolsTab", () => {
     expect(await screen.findByText("a API recusou a requisição")).not.toBeNull();
   });
 
+  it("desabilita Cancelar e as ações da tabela enquanto a mutation está pendente", async () => {
+    const user = userEvent.setup();
+    let resolveMutation: () => void = () => {};
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityProtocolVersions")) {
+        return Promise.resolve(versionsReply([ v({ status: "draft" }) ]));
+      }
+      if (body.query.includes("submitProtocolForReview")) {
+        return new Promise<Response>((resolve) => {
+          resolveMutation = () => resolve(mutationReply("submitProtocolForReview", true));
+        });
+      }
+      return Promise.resolve(reply(500, {}));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect((screen.getByRole("button", { name: "Cancelar" }) as HTMLButtonElement).disabled).toBe(true));
+    expect((screen.getByRole("button", { name: "Aposentar" }) as HTMLButtonElement).disabled).toBe(true);
+
+    resolveMutation();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveProperty("textContent", "Enviar para revisão concluído: dengue v1"));
+  });
+
+  it("clicar em atualizar limpa a mensagem de status", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "draft" }) ], { submitProtocolForReview: () => mutationReply("submitProtocolForReview", true) });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Enviar para revisão concluído: dengue v1");
+
+    await user.click(screen.getByRole("button", { name: "atualizar" }));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("bloqueia localmente sem código de step-up e não chama a mutation", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "published", activationMissing: 0 }) ]);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Aposentar" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("informe o código do autenticador")).not.toBeNull();
+    expect(calls(fetchMock, "retireProtocol")).toHaveLength(0);
+  });
+
+  it("bloqueia localmente sem motivo na reversão e não chama a mutation", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true }) ]);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    await user.type(screen.getByLabelText("Código do autenticador"), "123456");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    expect(await screen.findByText("informe o motivo")).not.toBeNull();
+    expect(calls(fetchMock, "revertProtocolActivation")).toHaveLength(0);
+  });
+
   it("cancelar fecha o painel sem chamar mutation", async () => {
     const user = userEvent.setup();
     route([ v({ status: "draft" }) ]);
