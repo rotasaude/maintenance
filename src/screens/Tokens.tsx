@@ -116,26 +116,34 @@ export function Tokens() {
       const payload = result.data?.createMaintenanceToken;
 
       if (payload?.ok && payload.secretOnce) {
-        // T8 (correção de comentário — o motivo anterior estava errado): o
-        // react-query chama ESTE onSuccess ANTES de despachar 'success' para
-        // a Mutation (o dispatch que grava `state.data`, com o secretOnce, e
-        // `state.variables`, com o code) — não depois. `clearCreateMutationFromCache()`
-        // abaixo remove a Mutation do MutationCache AQUI DENTRO, então o
-        // dispatch de 'success' que viria a seguir não tem mais instância
-        // nenhuma para gravar: o segredo NUNCA chega a existir em
-        // `state.data`, nem por um tick — não é reset() limpando algo que já
-        // esteve lá. reset() sozinho não bastaria: ele só zera o estado
-        // local do HOOK, e não impede a Mutation (o objeto do
-        // MutationCache) de guardar o dado internamente.
+        // O que a limpeza abaixo faz, e o que ela NÃO faz — conferido no
+        // código do @tanstack/query-core 5 instalado (build/modern/mutation.js
+        // e mutationCache.js), porque as duas versões anteriores deste
+        // comentário afirmaram mais do que o código entrega:
         //
-        // AVISO: por isso, nunca ligue o React Query Devtools nem assine o
-        // MutationCache (`queryClient.getMutationCache().subscribe(...)`)
-        // nesta app. Uma Mutation removida do cache ainda DESPACHA e
-        // NOTIFICA quem já a observava — devtools e um subscriber próprio se
-        // inscrevem irrestritamente em toda mutation, e veriam o secretOnce
-        // (e o code) passar pelo dispatch de 'success' mesmo depois da
-        // remoção, que só tira a Mutation do `findAll()`, não da lista de
-        // observadores que já tinha.
+        // 1. Este `onSuccess` roda ANTES do dispatch de 'success' (mutation.js:
+        //    `await this.options.onSuccess?.(...)` vem antes de
+        //    `#dispatch({ type: "success", data })`). Isso é verdade.
+        // 2. `clearCreateMutationFromCache()` tira a Mutation do MutationCache
+        //    (`remove()` só a apaga do conjunto e dos escopos) — mas NÃO
+        //    destrói o objeto. O dispatch que vem depois ainda grava
+        //    `state.data` (com o secretOnce) e `state.variables` (com o code)
+        //    NESSA instância. O segredo existe em memória ali; o que a remoção
+        //    compra é que nada que ENUMERE o cache (`findAll`, `getAll`,
+        //    devtools) alcança essa instância depois, e o `reset()` solta a
+        //    referência que o hook mantinha — daí em diante o objeto só espera
+        //    o coletor de lixo.
+        //
+        // Ou seja: a proteção é "fora do alcance de quem varre o cache", não
+        // "nunca existiu". Para o segredo nunca entrar em `state.data` seria
+        // preciso não devolvê-lo da `mutationFn` (tirá-lo do payload ali e
+        // guardá-lo num ref) — mudança maior, registrada como pendência.
+        //
+        // AVISO, que segue valendo: nunca ligue o React Query Devtools nem
+        // assine o MutationCache (`queryClient.getMutationCache().subscribe(...)`)
+        // nesta app. Quem já observava a Mutation continua sendo NOTIFICADO
+        // depois da remoção, e devtools/subscriber se inscrevem em toda
+        // mutation — veriam o secretOnce e o code passarem no dispatch.
         setSecretPanel({ name: vars.name, secretOnce: payload.secretOnce });
         setCopyError(null);
         setCreateFormError(null);
