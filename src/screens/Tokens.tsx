@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { gql } from "../lib/api";
 import { graphql } from "../gql";
@@ -100,6 +100,15 @@ export function Tokens() {
   const [ secretPanel, setSecretPanel ] = useState<SecretPanelState | null>(null);
   const [ copyError, setCopyError ] = useState<string | null>(null);
 
+  // O código do autenticador e o segredo do token NÃO passam pelo react-query:
+  // o que entra em `variables` e o que sai de `mutationFn` é gravado no estado
+  // da Mutation pelos dispatches de 'pending' e 'success', e quem assina o
+  // MutationCache (devtools, por exemplo) é notificado desses dispatches mesmo
+  // depois de a Mutation sair do cache. Os dois viajam por ref: a `mutationFn`
+  // lê o código daqui e guarda o segredo aqui, devolvendo um payload sem ele.
+  const codeRef = useRef("");
+  const secretRef = useRef<string | null>(null);
+
   function toggleSlug(slug: string) {
     setSelectedSlugs((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [ ...prev, slug ]));
   }
@@ -107,44 +116,22 @@ export function Tokens() {
   const createMutation = useMutation({
     mutationKey: CREATE_TOKEN_MUTATION_KEY,
     gcTime: 0,
-    mutationFn: (vars: { name: string; access: string; citySlugs: string[]; expiresAt: string; code: string }) =>
-      gql(CreateTokenMutation, vars),
-    onSuccess: (result, vars) => {
+    mutationFn: async (vars: { name: string; access: string; citySlugs: string[]; expiresAt: string }) => {
+      const result = await gql(CreateTokenMutation, { ...vars, code: codeRef.current });
+      const payload = result.data?.createMaintenanceToken;
+      // O segredo sai do payload aqui, antes de qualquer dispatch.
+      secretRef.current = payload?.secretOnce ?? null;
+      return payload ? { ok: payload.ok, errors: payload.errors } : null;
+    },
+    onSuccess: (payload, vars) => {
       // I3/step_up!: o código é consumido uma vez — limpo em toda tentativa.
       setCode("");
+      codeRef.current = "";
+      const secretOnce = secretRef.current;
+      secretRef.current = null;
 
-      const payload = result.data?.createMaintenanceToken;
-
-      if (payload?.ok && payload.secretOnce) {
-        // O que a limpeza abaixo faz, e o que ela NÃO faz — conferido no
-        // código do @tanstack/query-core 5 instalado (build/modern/mutation.js
-        // e mutationCache.js), porque as duas versões anteriores deste
-        // comentário afirmaram mais do que o código entrega:
-        //
-        // 1. Este `onSuccess` roda ANTES do dispatch de 'success' (mutation.js:
-        //    `await this.options.onSuccess?.(...)` vem antes de
-        //    `#dispatch({ type: "success", data })`). Isso é verdade.
-        // 2. `clearCreateMutationFromCache()` tira a Mutation do MutationCache
-        //    (`remove()` só a apaga do conjunto e dos escopos) — mas NÃO
-        //    destrói o objeto. O dispatch que vem depois ainda grava
-        //    `state.data` (com o secretOnce) e `state.variables` (com o code)
-        //    NESSA instância. O segredo existe em memória ali; o que a remoção
-        //    compra é que nada que ENUMERE o cache (`findAll`, `getAll`,
-        //    devtools) alcança essa instância depois, e o `reset()` solta a
-        //    referência que o hook mantinha — daí em diante o objeto só espera
-        //    o coletor de lixo.
-        //
-        // Ou seja: a proteção é "fora do alcance de quem varre o cache", não
-        // "nunca existiu". Para o segredo nunca entrar em `state.data` seria
-        // preciso não devolvê-lo da `mutationFn` (tirá-lo do payload ali e
-        // guardá-lo num ref) — mudança maior, registrada como pendência.
-        //
-        // AVISO, que segue valendo: nunca ligue o React Query Devtools nem
-        // assine o MutationCache (`queryClient.getMutationCache().subscribe(...)`)
-        // nesta app. Quem já observava a Mutation continua sendo NOTIFICADO
-        // depois da remoção, e devtools/subscriber se inscrevem em toda
-        // mutation — veriam o secretOnce e o code passarem no dispatch.
-        setSecretPanel({ name: vars.name, secretOnce: payload.secretOnce });
+      if (payload?.ok && secretOnce) {
+        setSecretPanel({ name: vars.name, secretOnce });
         setCopyError(null);
         setCreateFormError(null);
         setCreateFieldErrors([]);
@@ -153,7 +140,7 @@ export function Tokens() {
         setSelectedSlugs([]);
         setValidityDays(String(DEFAULT_VALIDITY_DAYS));
         void queryClient.invalidateQueries({ queryKey: [ "maintenanceTokens" ] });
-        clearCreateMutationFromCache();
+        createMutation.reset();
         return;
       }
 
@@ -162,36 +149,31 @@ export function Tokens() {
         setCreateFormError(null);
         setCreateFieldErrors([]);
         void queryClient.invalidateQueries({ queryKey: [ "maintenanceTokens" ] });
-        clearCreateMutationFromCache();
+        createMutation.reset();
         return;
       }
 
       if (!payload) {
         setCreateFieldErrors([]);
         setCreateFormError(GENERIC_ERROR);
-        clearCreateMutationFromCache();
+        createMutation.reset();
         return;
       }
 
       setCreateFieldErrors(payload.errors);
       const formLevel = payload.errors.filter((e) => !FIELD_PATHS.includes(e.path ?? ""));
       setCreateFormError(formLevel.length > 0 ? formLevel.map((e) => e.message).join(" ") : null);
-      clearCreateMutationFromCache();
+      createMutation.reset();
     },
     onError: (err) => {
       setCode("");
+      codeRef.current = "";
+      secretRef.current = null;
       setCreateFieldErrors([]);
       setCreateFormError(messageFor(err));
-      clearCreateMutationFromCache();
+      createMutation.reset();
     }
   });
-
-  function clearCreateMutationFromCache() {
-    createMutation.reset();
-    queryClient.getMutationCache().findAll({ mutationKey: CREATE_TOKEN_MUTATION_KEY }).forEach((mutation) => {
-      queryClient.getMutationCache().remove(mutation);
-    });
-  }
 
   function submitCreate(event: FormEvent) {
     event.preventDefault();
@@ -202,8 +184,9 @@ export function Tokens() {
       return;
     }
     setCreateFormError(null);
+    codeRef.current = code;
     createMutation.mutate({
-      name, access, citySlugs: selectedSlugs, expiresAt: daysToExpiresAtIso(days), code
+      name, access, citySlugs: selectedSlugs, expiresAt: daysToExpiresAtIso(days)
     });
   }
 

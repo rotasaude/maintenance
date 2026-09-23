@@ -241,6 +241,56 @@ describe("Tokens", () => {
     expect(cacheContainsSecret(queryClient, "shh-secret-value")).toBe(false);
   });
 
+  // O `cacheContainsSecret` acima só olha o que o cache ENUMERA. Quem assina o
+  // MutationCache vê mais: os observadores continuam sendo notificados de cada
+  // dispatch, inclusive de uma Mutation já removida do cache. Este teste olha
+  // por essa fresta — se o segredo (ou o código do autenticador) chegar a
+  // entrar no estado da Mutation, ele aparece aqui.
+  it("nem o segredo nem o código do autenticador entram no estado da mutation", async () => {
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: vi.fn().mockResolvedValue(undefined) }, configurable: true
+    });
+
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const observed: string[] = [];
+    queryClient.getMutationCache().subscribe((event) => {
+      observed.push(JSON.stringify((event as { mutation?: { state: unknown } }).mutation?.state ?? {}));
+    });
+
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(sessionReply());
+      if (path === "/graphql") {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation CreateMaintenanceToken")) {
+          return Promise.resolve(reply(200, {
+            data: { createMaintenanceToken: { ok: true, secretOnce: "shh-secret-value", errors: [] } }
+          }));
+        }
+        if (body.query.includes("query CitiesForTokenScope")) return Promise.resolve(citiesReply([]));
+        return Promise.resolve(tokensReply([]));
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+
+    renderTokens(queryClient);
+    await screen.findByText("nenhum token");
+
+    await user.type(screen.getByLabelText("Nome"), "grafana");
+    await user.type(screen.getByLabelText("Código"), "424242");
+    await user.click(screen.getByRole("button", { name: "criar token" }));
+
+    // o painel mostra o segredo (ele existe no estado da TELA, que é o lugar
+    // dele) ...
+    expect(await screen.findByText("shh-secret-value")).not.toBeNull();
+
+    // ... e nenhum dispatch da mutation carregou segredo nem código.
+    const everythingObserved = observed.join("|");
+    expect(everythingObserved).not.toContain("shh-secret-value");
+    expect(everythingObserved).not.toContain("424242");
+  });
+
   it("revogar pede confirmação e reconsulta a lista", async () => {
     const user = userEvent.setup();
     let tokensCallCount = 0;
