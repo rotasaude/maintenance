@@ -21,7 +21,7 @@ function v(overrides: Record<string, unknown>) {
   return {
     name: "dengue", version: 1, status: "draft",
     publicationSignatures: 0, publicationMissing: 2, activationSignatures: 0, activationMissing: 2,
-    eligibleReviewers: 3, revertible: false, ...overrides
+    eligibleReviewers: 3, revertible: false, revertTargetVersion: null, ...overrides
   };
 }
 function versionsReply(rows: unknown[]) {
@@ -152,6 +152,26 @@ describe("ProtocolsTab", () => {
     await waitFor(() => expect(calls(fetchMock, "revertProtocolActivation")).toHaveLength(1));
     expect(bodyOf(calls(fetchMock, "revertProtocolActivation")[0]).variables)
       .toEqual({ citySlug: "sp", name: "dengue", reason: "regra errada em produção", code: "654321" });
+  });
+
+  it("o painel de reverter nomeia a versão que deve voltar", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ]);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+
+    expect(screen.getByText(/deve voltar para a versão 2/)).not.toBeNull();
+  });
+
+  it("sem alvo, mantém o aviso sem número", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: null }) ]);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+
+    expect(screen.getByText(/versão ativada antes desta/)).not.toBeNull();
   });
 
   it("recusa de CityMutation (data com o campo nulo) aparece com código e a lista é recarregada", async () => {
