@@ -64,7 +64,10 @@ const STATUS_LABELS: Record<string, string> = {
 // voltar", não "vai voltar": a leitura é sem lock, e a API decide no clique.
 // Sem alvo na leitura, cai na frase sem número em vez de imprimir "null".
 function revertNotice(targetVersion: number | null): string {
-  if (targetVersion === null) return "volta para a versão ativada antes desta, sem assinatura nova";
+  // Loose comparison: o codegen emite revertTargetVersion como opcional
+  // (`Maybe<number>`), então o valor pode chegar `undefined`, não só `null`
+  // — `=== null` deixaria passar "versão undefined" no aviso.
+  if (targetVersion == null) return "deve voltar para a versão ativada antes desta, sem assinatura nova";
   return `deve voltar para a versão ${targetVersion}, que estava em uso antes desta; sem assinatura nova, e não encadeia`;
 }
 const GENERIC_ERROR = "não foi possível concluir — tente de novo";
@@ -192,6 +195,9 @@ export function ProtocolsTab({ slug }: { slug: string }) {
     const path = r.path ?? [];
     return path[0] === "city" && (path.length === 1 || path[1] === "protocolVersions");
   });
+  // O cast estreita revertTargetVersion, que o codegen emite como opcional
+  // (`Maybe<number>`) — é ele quem garante `number | null` para `Row`, não
+  // decoração: sem ele, `undefined` passaria pelo `=== null` da revertNotice.
   const rows = (query.data?.data?.city?.protocolVersions ?? []) as Row[];
 
   return (

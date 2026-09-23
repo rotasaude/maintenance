@@ -138,13 +138,13 @@ describe("ProtocolsTab", () => {
 
   it("reverter pede motivo e código e manda name/reason/code (sem version)", async () => {
     const user = userEvent.setup();
-    route([ v({ status: "active", version: 3, revertible: true }) ], {
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
       revertProtocolActivation: () => mutationReply("revertProtocolActivation", true)
     });
     renderTab();
 
     await user.click(await screen.findByRole("button", { name: "Reverter" }));
-    expect(screen.getByText("volta para a versão ativada antes desta, sem assinatura nova")).not.toBeNull();
+    expect(screen.getByText(/deve voltar para a versão 2/)).not.toBeNull();
     await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
     await user.type(screen.getByLabelText("Código do autenticador"), "654321");
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
@@ -172,6 +172,18 @@ describe("ProtocolsTab", () => {
     await user.click(await screen.findByRole("button", { name: "Reverter" }));
 
     expect(screen.getByText(/versão ativada antes desta/)).not.toBeNull();
+  });
+
+  // Guarda a base da revertNotice: se a seleção perder o campo, o aviso
+  // degrada para "versão undefined" sem nenhum exemplo pegar isso.
+  it("a consulta CityProtocolVersions seleciona revertTargetVersion", async () => {
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ]);
+    renderTab();
+
+    await screen.findByRole("table");
+
+    await waitFor(() => expect(calls(fetchMock, "query CityProtocolVersions")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "query CityProtocolVersions")[0]).query).toContain("revertTargetVersion");
   });
 
   it("recusa de CityMutation (data com o campo nulo) aparece com código e a lista é recarregada", async () => {
