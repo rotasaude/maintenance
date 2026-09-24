@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { rest } from "../lib/api";
-import { InvalidCredentials, NetworkError, RateLimited } from "../lib/errors";
+import { InvalidCredentials, NetworkError, RateLimited, RequestRejected } from "../lib/errors";
+import { originMismatchHint } from "../lib/originHint";
+import { expectedOrigin as expectedOriginFromEnv } from "../env";
 import { toMe, type Me, type SessionPayload } from "../lib/session";
 import { Field } from "../components/Field";
 import { Button } from "../components/Button";
@@ -14,19 +16,33 @@ type LoginFailure = { error?: string };
 
 // I2: nenhuma falha pode deixar o formulário mudo. InvalidCredentials e
 // RateLimited já têm mensagem pronta em português (src/lib/errors.ts);
-// NetworkError também. Qualquer outra coisa — RequestRejected (403 de
-// Origin, 500, 404...), AuthRequired, ou algo inesperado — cai na mensagem
-// genérica: nunca relança sem mostrar nada.
+// NetworkError também. Qualquer outra coisa — RequestRejected (500, 404...),
+// AuthRequired, ou algo inesperado — cai na mensagem genérica: nunca
+// relança sem mostrar nada.
 const GENERIC_LOGIN_ERROR = "não foi possível entrar agora — tente de novo";
 
-function messageFor(err: unknown): string {
+// A ÚNICA exceção à frase genérica: o 403 de Origin, e só quando o host
+// esperado é conhecido. Ele não é recusa de credencial — é o navegador num
+// host que a API não reconhece, recusando tudo —, e a frase genérica manda a
+// pessoa tentar de novo para sempre. Quem injeta o host esperado é o
+// servidor de dev (src/env.ts); num build publicado o valor não existe, a
+// dica é nula e a mensagem volta a ser a genérica, que é o que não conta ao
+// atacante qual camada recusou.
+function messageFor(err: unknown, expectedOrigin: string | null): string {
   if (err instanceof InvalidCredentials || err instanceof RateLimited || err instanceof NetworkError) {
     return err.message;
+  }
+  if (err instanceof RequestRejected && err.status === 403) {
+    const hint = originMismatchHint(window.location.origin, expectedOrigin);
+    if (hint) return hint;
   }
   return GENERIC_LOGIN_ERROR;
 }
 
-export function Login({ onSignedIn, notice }: { onSignedIn(me: Me): void; notice?: string | null }) {
+export function Login(
+  { onSignedIn, notice, expectedOrigin = expectedOriginFromEnv() }:
+  { onSignedIn(me: Me): void; notice?: string | null; expectedOrigin?: string | null }
+) {
   const [ step, setStep ] = useState<Step>("credentials");
   const [ emailAddress, setEmailAddress ] = useState("");
   const [ password, setPassword ] = useState("");
@@ -55,7 +71,7 @@ export function Login({ onSignedIn, notice }: { onSignedIn(me: Me): void; notice
       setCode("");
       setStep("code");
     } catch (err) {
-      setError(messageFor(err));
+      setError(messageFor(err, expectedOrigin));
     } finally {
       setBusy(false);
     }
@@ -71,7 +87,7 @@ export function Login({ onSignedIn, notice }: { onSignedIn(me: Me): void; notice
       onSignedIn(toMe(payload));
     } catch (err) {
       if (err instanceof InvalidCredentials) backToCredentials(err.message);
-      else setError(messageFor(err));
+      else setError(messageFor(err, expectedOrigin));
     } finally {
       setBusy(false);
     }

@@ -31,3 +31,15 @@ export function apiBase(
   if (!url) throw new Error("VITE_MAINTENANCE_API_URL é obrigatória em staging");
   return url.replace(/\/+$/, "");
 }
+
+// O host de onde o frontend de dev é servido, injetado pelo servidor de dev
+// do Vite a partir da MESMA constante que ele usa para preencher o `Origin`
+// das requisições sem esse header (ver `define` em vite.config.ts). Um build
+// publicado não carrega o valor: ninguém precisa dele lá, e a ausência é o
+// que mantém a mensagem de login genérica fora de dev (ver
+// src/lib/originHint.ts).
+export function expectedOrigin(
+  value: string | undefined = import.meta.env.VITE_MAINTENANCE_EXPECTED_ORIGIN
+): string | null {
+  return value ? value : null;
+}

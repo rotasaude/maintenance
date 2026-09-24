@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiBase, maintenanceEnv } from "./env";
+import { apiBase, expectedOrigin, maintenanceEnv } from "./env";
 
 describe("maintenanceEnv", () => {
   it("é development por padrão quando o valor não está definido (fora de um build de produção)", () => {
@@ -78,5 +78,16 @@ describe("apiBase", () => {
 
   it("exige a URL em staging mesmo quando é uma string vazia", () => {
     expect(() => apiBase("staging", "")).toThrow("VITE_MAINTENANCE_API_URL é obrigatória em staging");
+  });
+});
+
+describe("expectedOrigin", () => {
+  it("devolve o host que o servidor de dev injetou", () => {
+    expect(expectedOrigin("http://maintenance.localhost:5177")).toBe("http://maintenance.localhost:5177");
+  });
+
+  it("é nula quando nada foi injetado — é o caso do build publicado", () => {
+    expect(expectedOrigin(undefined)).toBeNull();
+    expect(expectedOrigin("")).toBeNull();
   });
 });

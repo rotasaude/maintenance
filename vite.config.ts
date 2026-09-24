@@ -63,8 +63,17 @@ const proxy: ProxyOptions = {
   }
 };
 
-export default defineConfig({
+// `command === "serve"` — só o servidor de DEV injeta o host esperado. O
+// frontend usa esse valor para explicar o 403 de Origin em vez de mostrar a
+// frase genérica (src/lib/originHint.ts); um build publicado não carrega o
+// valor, e é a ausência dele que mantém a tela muda lá. Vem da MESMA
+// constante que preenche o `Origin` das requisições sem esse header, para os
+// dois nunca divergirem.
+export default defineConfig(({ command }) => ({
   plugins: [react()],
+  define: command === "serve"
+    ? { "import.meta.env.VITE_MAINTENANCE_EXPECTED_ORIGIN": JSON.stringify(DEV_FRONTEND_ORIGIN) }
+    : {},
   server: {
     port: 5173,
     host: "0.0.0.0",
@@ -76,4 +85,4 @@ export default defineConfig({
       "/invitations/accept": proxy
     }
   }
-});
+}));

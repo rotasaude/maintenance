@@ -191,4 +191,33 @@ describe("Login", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("não foi possível entrar agora — tente de novo");
     expect(screen.getByLabelText("Código")).not.toBeNull();
   });
+  // O 403 de Origin recusa TUDO por configuração local: nenhuma credencial
+  // passa, e a frase genérica não dá pista. A dica só existe onde o host
+  // esperado é conhecido — o servidor de dev o injeta, um build publicado
+  // não —, então a mesma tela continua muda fora de dev.
+  it("403 com host esperado conhecido nomeia os dois hosts em vez da mensagem genérica", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(reply(403, { error: "forbidden_origin" }));
+
+    render(<Login onSignedIn={onSignedIn} expectedOrigin="http://maintenance.localhost:5177" />);
+    await user.type(screen.getByLabelText("E-mail"), "a@b.com");
+    await user.type(screen.getByLabelText("Senha"), "correcthorsebatterystaple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("http://maintenance.localhost:5177");
+    expect(alert.textContent).toContain(window.location.origin);
+  });
+
+  it("403 sem host esperado mantém a mensagem genérica — o caso do build publicado", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockResolvedValueOnce(reply(403, { error: "forbidden_origin" }));
+
+    render(<Login onSignedIn={onSignedIn} expectedOrigin={null} />);
+    await user.type(screen.getByLabelText("E-mail"), "a@b.com");
+    await user.type(screen.getByLabelText("Senha"), "correcthorsebatterystaple");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("não foi possível entrar agora — tente de novo");
+  });
 });
