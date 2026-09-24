@@ -21,6 +21,24 @@ manutenção do Rails reconhece. Veja os comentários de `vite.config.ts` para
 o porquê do `Host` trocado e do `Origin` só injetado quando a requisição
 chega sem ele (GET same-origin não manda `Origin` no navegador).
 
+Abrir em `http://localhost:5177` **não funciona**: o navegador manda esse
+`Origin`, o api compara com `MAINTENANCE_FRONTEND_ORIGIN` e recusa tudo com
+403 — que a tela de login mostra como a mensagem genérica, sem pista do
+motivo. Use o host `maintenance.localhost`.
+
+### Credencial de desenvolvimento
+
+`bin/rails db:seed` no `api` semeia o mantenedor **dev@local /
+dev-password**, com TOTP de segredo fixo, e imprime o `otpauth://` para
+escanear no autenticador (`lib/dev_maintainer.rb`). É conta de outra tabela
+que o operador do console de plataforma — o mesmo e-mail e a mesma senha,
+mas segredo de TOTP próprio. O segredo fixo sobrevive a resets do banco, e a
+semente também destrava a conta bloqueada por senha errada.
+
+O caminho de verdade para criar mantenedor continua sendo o convite
+(`rails 'maintainer:invite[email]'`); a semente existe só para não depender
+dele em dev.
+
 ### As duas variáveis de ambiente que o api precisa
 
 O app só funciona se o `api` estiver com:
