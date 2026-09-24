@@ -53,7 +53,11 @@ const RetireMutation = graphql(`
 `);
 const RevertMutation = graphql(`
   mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {
-    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) { ok errors { path message } }
+    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) {
+      ok
+      revertedToVersion
+      errors { path message }
+    }
   }
 `);
 
@@ -63,6 +67,24 @@ const STATUS_LABELS: Record<string, string> = {
 // A frase nomeia a versão-alvo (spec 2026-09-23-revert-target §5). "deve
 // voltar", não "vai voltar": a leitura é sem lock, e a API decide no clique.
 // Sem alvo na leitura, cai na frase sem número em vez de imprimir "null".
+// A reversão é a única ação cuja versão de sucesso NÃO é a versão sobre a qual
+// se agiu: ela sai da ativa e volta para a anterior. Nomear `row.version` ali,
+// como as outras ações fazem com razão, anuncia a versão que acabou de sair de
+// uso.
+//
+// Divergir do previsto é fato, não alarme: significa que outra ativação comitou
+// entre a leitura e o clique e o servidor reresolveu sob lock, como deve.
+function doneMessage(pending: Pending, revertedTo: number | null): string {
+  const { row, action } = pending;
+  if (action.kind !== "revert") return `${action.label} concluído: ${row.name} v${row.version}`;
+  if (revertedTo == null) return `${action.label} concluído.`;
+  if (row.revertTargetVersion != null && row.revertTargetVersion !== revertedTo) {
+    return `${action.label} concluído: estava previsto v${row.revertTargetVersion}; ` +
+      `a cidade está com ${row.name} v${revertedTo}.`;
+  }
+  return `${action.label} concluído: a cidade está com ${row.name} v${revertedTo}.`;
+}
+
 function revertNotice(targetVersion: number | null): string {
   // Loose comparison: o codegen emite revertTargetVersion como opcional
   // (`Maybe<number>`), então o valor pode chegar `undefined`, não só `null`
@@ -80,7 +102,10 @@ type Row = {
 };
 type Pending = { row: Row; action: ProtocolAction };
 type FieldError = { path?: string | null; message: string };
-type Payload = { ok: boolean; errors: FieldError[] };
+// `revertedToVersion` só existe no payload da reversão — opcional aqui, e é a
+// opcionalidade que obriga a tela a tratar a ausência em vez de imprimir
+// undefined.
+type Payload = { ok: boolean; errors: FieldError[]; revertedToVersion?: number | null };
 
 // Uma função por ação: devolve o payload `{ ok, errors }` da mutation E os
 // erros de campo do envelope GraphQL (F1) — uma recusa de CityMutation
@@ -143,7 +168,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
       setCode("");
       if (payload?.ok) {
         close();
-        setDone(`${p.action.label} concluído: ${p.row.name} v${p.row.version}`);
+        setDone(doneMessage(p, payload.revertedToVersion ?? null));
         void queryClient.invalidateQueries({ queryKey });
         return;
       }

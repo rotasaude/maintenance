@@ -27,8 +27,8 @@ function v(overrides: Record<string, unknown>) {
 function versionsReply(rows: unknown[]) {
   return reply(200, { data: { city: { slug: "sp", protocolVersions: rows } } });
 }
-function mutationReply(field: string, ok: boolean, errors: unknown[] = []) {
-  return reply(200, { data: { [field]: { ok, errors } } });
+function mutationReply(field: string, ok: boolean, errors: unknown[] = [], extra: object = {}) {
+  return reply(200, { data: { [field]: { ok, errors, ...extra } } });
 }
 
 function renderTab() {
@@ -310,5 +310,74 @@ describe("ProtocolsTab", () => {
     route([]);
     renderTab();
     expect(await screen.findByText("nenhum protocolo")).not.toBeNull();
+  });
+
+  it("a frase de sucesso nomeia a versão que passou a valer, não a que saiu de uso", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
+      revertProtocolActivation: () => mutationReply("revertProtocolActivation", true, [], { revertedToVersion: 2 })
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toContain("a cidade está com dengue v2");
+    expect(status.textContent).not.toContain("v3");
+  });
+
+  // Previsão e resultado vêm de fontes DIFERENTES do arranjo — a previsão do
+  // revertTargetVersion da linha, o resultado do payload da mutation. Com o
+  // mesmo número nos dois, o exemplo passaria sem provar nada.
+  it("quando a versão efetivada difere da prevista, a frase diz as duas", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
+      revertProtocolActivation: () => mutationReply("revertProtocolActivation", true, [], { revertedToVersion: 5 })
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toContain("estava previsto v2");
+    expect(status.textContent).toContain("a cidade está com dengue v5");
+  });
+
+  it("sem número no payload, a frase sai sem número e nunca com undefined", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
+      revertProtocolActivation: () => mutationReply("revertProtocolActivation", true)
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toContain("concluído");
+    expect(status.textContent).not.toContain("undefined");
+  });
+
+  it("publicar continua nomeando a versão sobre a qual se agiu", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "in_review", version: 4, publicationSignatures: 2, publicationMissing: 0 }) ], {
+      publishProtocol: () => mutationReply("publishProtocol", true)
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Publicar" }));
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toContain("v4");
   });
 });
