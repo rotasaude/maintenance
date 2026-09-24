@@ -25,7 +25,7 @@ const CityProtocolVersionsQuery = graphql(`
         name version status
         publicationSignatures publicationMissing
         activationSignatures activationMissing
-        eligibleReviewers revertible
+        eligibleReviewers revertible revertTargetVersion
       }
     }
   }
@@ -60,14 +60,23 @@ const RevertMutation = graphql(`
 const STATUS_LABELS: Record<string, string> = {
   draft: "rascunho", in_review: "em revisão", published: "publicada", active: "ativa", retired: "aposentada"
 };
-const REVERT_NOTICE = "volta para a versão ativada antes desta, sem assinatura nova";
+// A frase nomeia a versão-alvo (spec 2026-09-23-revert-target §5). "deve
+// voltar", não "vai voltar": a leitura é sem lock, e a API decide no clique.
+// Sem alvo na leitura, cai na frase sem número em vez de imprimir "null".
+function revertNotice(targetVersion: number | null): string {
+  // Loose comparison: o codegen emite revertTargetVersion como opcional
+  // (`Maybe<number>`), então o valor pode chegar `undefined`, não só `null`
+  // — `=== null` deixaria passar "versão undefined" no aviso.
+  if (targetVersion == null) return "deve voltar para a versão ativada antes desta, sem assinatura nova";
+  return `deve voltar para a versão ${targetVersion}, que estava em uso antes desta; sem assinatura nova, e não encadeia`;
+}
 const GENERIC_ERROR = "não foi possível concluir — tente de novo";
 
 type Row = {
   name: string; version: number; status: string;
   publicationSignatures: number; publicationMissing: number;
   activationSignatures: number; activationMissing: number;
-  eligibleReviewers: number; revertible: boolean;
+  eligibleReviewers: number; revertible: boolean; revertTargetVersion: number | null;
 };
 type Pending = { row: Row; action: ProtocolAction };
 type FieldError = { path?: string | null; message: string };
@@ -186,7 +195,10 @@ export function ProtocolsTab({ slug }: { slug: string }) {
     const path = r.path ?? [];
     return path[0] === "city" && (path.length === 1 || path[1] === "protocolVersions");
   });
-  const rows: Row[] = query.data?.data?.city?.protocolVersions ?? [];
+  // O cast estreita revertTargetVersion, que o codegen emite como opcional
+  // (`Maybe<number>`) — é ele quem garante `number | null` para `Row`, não
+  // decoração: sem ele, `undefined` passaria pelo `=== null` da revertNotice.
+  const rows = (query.data?.data?.city?.protocolVersions ?? []) as Row[];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -230,7 +242,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
       {pending && (
         <Panel title={`Confirmar: ${pending.action.label} ${pending.row.name} v${pending.row.version}`}>
           <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {pending.action.kind === "revert" && <p style={{ margin: 0, fontSize: 12.5 }}>{REVERT_NOTICE}</p>}
+            {pending.action.kind === "revert" && <p style={{ margin: 0, fontSize: 12.5 }}>{revertNotice(pending.row.revertTargetVersion)}</p>}
             {formError && <ErrorState message={formError} />}
             {pending.action.needsReason && (
               <>

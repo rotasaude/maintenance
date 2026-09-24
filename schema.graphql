@@ -358,6 +358,11 @@ type ProtocolVersion {
   name: String!
   publicationMissing: Int!
   publicationSignatures: Int!
+
+  """
+  Versão que voltaria a valer numa reversão de emergência; nula quando não há.
+  """
+  revertTargetVersion: Int
   revertible: Boolean!
   status: String!
   version: Int!
