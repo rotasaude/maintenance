@@ -422,5 +422,13 @@ describe("ProtocolsTab", () => {
 
     const erro = await screen.findByText(/a versão em uso agora é a 5/);
     expect(erro.textContent).not.toContain("undefined");
+
+    // A lista tem staleTime Infinity: sem releitura explícita, a tabela atrás
+    // segue afirmando "v3 · ativa" enquanto a mensagem diz que a vigente é a
+    // 5 — e o painel, com a linha capturada na abertura, mandaria o mesmo
+    // expectedVersion de novo, numa recusa que se repete para sempre.
+    await waitFor(() => expect(calls(fetchMock, "CityProtocolVersions").length).toBeGreaterThan(1));
+    // E o painel fecha, para o próximo clique partir da linha nova.
+    expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
   });
 });
