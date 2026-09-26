@@ -136,7 +136,10 @@ describe("ProtocolsTab", () => {
     expect(screen.getByRole("button", { name: "Confirmar" })).not.toBeNull();
   });
 
-  it("reverter pede motivo e código e manda name/reason/code (sem version)", async () => {
+  // "sem version" continua valendo e continua sendo o ponto: a reversão não
+  // leva a versão A REVERTER (a API acha a ativa pelo nome). O expectedVersion
+  // é outra coisa — o token do que a tela via, que o servidor compara.
+  it("reverter pede motivo e código e manda name/reason/code (sem version a reverter)", async () => {
     const user = userEvent.setup();
     route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
       revertProtocolActivation: () => mutationReply("revertProtocolActivation", true)
@@ -151,7 +154,8 @@ describe("ProtocolsTab", () => {
 
     await waitFor(() => expect(calls(fetchMock, "revertProtocolActivation")).toHaveLength(1));
     expect(bodyOf(calls(fetchMock, "revertProtocolActivation")[0]).variables)
-      .toEqual({ citySlug: "sp", name: "dengue", reason: "regra errada em produção", code: "654321" });
+      .toEqual({ citySlug: "sp", name: "dengue", reason: "regra errada em produção", code: "654321",
+                 expectedVersion: 3 });
   });
 
   it("o painel de reverter nomeia a versão que deve voltar", async () => {
@@ -382,5 +386,41 @@ describe("ProtocolsTab", () => {
 
     const status = await screen.findByRole("status");
     expect(status.textContent).toContain("v4");
+  });
+
+  it("manda a versão vigente da linha como expectedVersion", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
+      revertProtocolActivation: () => mutationReply("revertProtocolActivation", true, [], { revertedToVersion: 2 })
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    await waitFor(() => expect(calls(fetchMock, "revertProtocolActivation")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "revertProtocolActivation")[0]).variables.expectedVersion).toBe(3);
+  });
+
+  // Recusa por divergência: a mensagem do servidor nomeia a versão em uso
+  // agora, e é ela que a tela precisa mostrar inteira.
+  it("recusa por versão mudada: mostra o estado novo em vez da frase genérica", async () => {
+    const user = userEvent.setup();
+    route([ v({ status: "active", version: 3, revertible: true, revertTargetVersion: 2 }) ], {
+      revertProtocolActivation: () => mutationReply("revertProtocolActivation", false, [
+        { path: "expectedVersion", message: "a versão em uso agora é a 5" }
+      ])
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    await user.type(screen.getByLabelText("Motivo"), "regra errada em produção");
+    await user.type(screen.getByLabelText("Código do autenticador"), "654321");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+
+    const erro = await screen.findByText(/a versão em uso agora é a 5/);
+    expect(erro.textContent).not.toContain("undefined");
   });
 });

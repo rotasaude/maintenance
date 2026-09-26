@@ -52,8 +52,8 @@ const RetireMutation = graphql(`
   }
 `);
 const RevertMutation = graphql(`
-  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {
-    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) {
+  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!, $expectedVersion: Int) {
+    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code, expectedVersion: $expectedVersion) {
       ok
       revertedToVersion
       errors { path message }
@@ -136,7 +136,11 @@ async function run(slug: string, { row, action }: Pending, code: string, reason:
       return { payload: r.data?.retireProtocol ?? null, fieldErrors: r.fieldErrors };
     }
     case "revert": {
-      const r = await gql(RevertMutation, { citySlug: slug, name: row.name, reason, code });
+      // A versão vigente que a TELA via: o servidor recusa se ela não for mais
+      // a vigente — outra ativação comitou entre a leitura e o clique.
+      const r = await gql(RevertMutation, {
+        citySlug: slug, name: row.name, reason, code, expectedVersion: row.version
+      });
       return { payload: r.data?.revertProtocolActivation ?? null, fieldErrors: r.fieldErrors };
     }
   }
