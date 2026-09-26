@@ -318,6 +318,11 @@ type Mutation {
     TOTP do momento
     """
     code: String!
+
+    """
+    A versão que a tela via como vigente. Divergiu, a reversão é recusada.
+    """
+    expectedVersion: Int
     name: String!
     reason: String!
   ): RevertProtocolActivationPayload

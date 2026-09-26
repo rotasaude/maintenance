@@ -52,8 +52,8 @@ const RetireMutation = graphql(`
   }
 `);
 const RevertMutation = graphql(`
-  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!) {
-    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code) {
+  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!, $expectedVersion: Int) {
+    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code, expectedVersion: $expectedVersion) {
       ok
       revertedToVersion
       errors { path message }
@@ -136,7 +136,11 @@ async function run(slug: string, { row, action }: Pending, code: string, reason:
       return { payload: r.data?.retireProtocol ?? null, fieldErrors: r.fieldErrors };
     }
     case "revert": {
-      const r = await gql(RevertMutation, { citySlug: slug, name: row.name, reason, code });
+      // A versão vigente que a TELA via: o servidor recusa se ela não for mais
+      // a vigente — outra ativação comitou entre a leitura e o clique.
+      const r = await gql(RevertMutation, {
+        citySlug: slug, name: row.name, reason, code, expectedVersion: row.version
+      });
       return { payload: r.data?.revertProtocolActivation ?? null, fieldErrors: r.fieldErrors };
     }
   }
@@ -152,11 +156,16 @@ export function ProtocolsTab({ slug }: { slug: string }) {
   const [ reason, setReason ] = useState("");
   const [ errors, setErrors ] = useState<FieldError[]>([]);
   const [ formError, setFormError ] = useState<string | null>(null);
+  // Recusa que sobrevive ao fechamento do painel: a frase que nomeia a versão
+  // vigente agora precisa continuar na tela DEPOIS de o painel sumir, porque é
+  // ela que explica por que a tabela mudou embaixo. `formError` vive dentro do
+  // painel e iria junto.
+  const [ staleNotice, setStaleNotice ] = useState<string | null>(null);
   const [ done, setDone ] = useState<string | null>(null);
 
   function open(row: Row, action: ProtocolAction) {
     setPending({ row, action });
-    setCode(""); setReason(""); setErrors([]); setFormError(null); setDone(null);
+    setCode(""); setReason(""); setErrors([]); setFormError(null); setDone(null); setStaleNotice(null);
   }
   function close() { setPending(null); setCode(""); setReason(""); setErrors([]); setFormError(null); }
 
@@ -189,6 +198,23 @@ export function ProtocolsTab({ slug }: { slug: string }) {
       setErrors(list);
       const general = list.filter((e) => e.path !== "code" && e.path !== "reason");
       setFormError(general.map((e) => e.message).join(" ") || null);
+
+      // Recusa por versão mudada: a mensagem já diz qual é a vigente agora, mas
+      // a lista tem staleTime Infinity e continuaria afirmando a antiga — e o
+      // painel, com a linha capturada na abertura, mandaria o MESMO
+      // expectedVersion de novo, numa recusa que se repete para sempre. Relê e
+      // fecha, para o próximo clique partir da linha nova. A mensagem
+      // sobrevive ao fechamento (o `done`/`formError` fica na tela).
+      const stale = list.find((e) => e.path === "expectedVersion");
+      if (stale) {
+        void queryClient.invalidateQueries({ queryKey });
+        setStaleNotice(stale.message);
+        setPending(null);
+        setCode("");
+        setReason("");
+        setErrors([]);
+        setFormError(null);
+      }
     },
     onError: (err) => {
       setCode("");
@@ -234,6 +260,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
       {query.isError && <ErrorState message={query.error instanceof Error ? query.error.message : "erro inesperado"} />}
       {fieldError && <ErrorState message={`${fieldError.code} — ${fieldError.message}`} />}
       {done && <p role="status" style={{ margin: 0, fontSize: 12.5 }}>{done}</p>}
+      {staleNotice && <ErrorState message={staleNotice} />}
 
       {query.isSuccess && !fieldError && rows.length === 0 && <EmptyState message="nenhum protocolo" />}
       {rows.length > 0 && (
