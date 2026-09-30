@@ -41,7 +41,7 @@ a autenticação é obrigatória e carrega todo o risco.
 
 | Tela | O que faz |
 |---|---|
-| **Cidades** | Catálogo; o detalhe de cada cidade tem as abas Perfil, Protocolos, Destinatários, Contas, Contagens e Operação. Cada aba é uma consulta própria, disparada só quando é aberta |
+| **Cidades** | Catálogo; o detalhe de cada cidade tem as abas Perfil, Protocolos, Destinatários, Contas, Contagens, Operação e Analytics. Cada aba é uma consulta própria, disparada só quando é aberta |
 | **Mantenedores** | Lista, convite e desativação. O convite só é registrado aqui; o link sai do `rake maintainer:invite` no servidor |
 | **Tokens** | Tokens de serviço para automação: criação com step-up, lista e revogação. O segredo aparece **uma única vez** e sai do cache do React Query logo depois |
 | **Auditoria** | Trilha de auditoria da plataforma, filtrável por mantenedor e período. Só leitura |
@@ -71,6 +71,24 @@ divergirem, a mensagem diz as duas.
 > **Ordem de deploy:** o `api` sobe **antes** do maintenance. Um build novo
 > contra um api sem os campos novos quebra a consulta por validação e derruba
 > a aba Protocolos inteira.
+
+### Analytics
+
+A aba **Analytics** do detalhe de cidade (módulo 14, ADR 0025) mostra o
+estado do pipeline de consolidação da cidade (`analyticsStatus`: última
+execução, quando consolidou e publicou com sucesso, último erro) e os seis
+indicadores semanais que ela publicou na plataforma nas últimas 12 semanas
+fechadas (`analyticsIndicators`). "Dados desatualizados" aparece quando a
+última consolidação bem-sucedida tem mais de 36 h, ou nunca houve. Contagem
+de 1 a 4 aparece como "oculto"; semana sem publicação, "sem dado".
+
+A aba faz duas consultas próprias, nenhuma junto do topo da ficha: o estado
+lê o banco da cidade, e os indicadores, a plataforma. Uma cidade
+inalcançável derruba só o quadro do estado.
+
+> **Ordem de deploy:** o `api` sobe **antes** do maintenance. Contra um api
+> sem os campos do módulo 14, a validação recusa as consultas da aba
+> Analytics, e só ela mostra o aviso; o topo e as outras abas seguem.
 
 ## Subir em dev
 
