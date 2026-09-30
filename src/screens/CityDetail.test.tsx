@@ -178,7 +178,15 @@ describe("CityDetail", () => {
       const body = bodyOf([ _url, init ]);
       if (body.query.includes("query CityHeader")) return Promise.resolve(HEADER_REPLY.clone());
       if (body.query.includes("query CityAnalyticsStatus")) return Promise.resolve(undefinedField("analyticsStatus"));
-      if (body.query.includes("query CityAnalyticsIndicators")) return Promise.resolve(undefinedField("analyticsIndicators"));
+      if (body.query.includes("query CityAnalyticsIndicators")) return Promise.resolve(reply(200, {
+        errors: [ {
+          message: "ISO8601Date isn't a defined input type (on $from) (Did you mean `ISO8601DateTime`?)",
+          extensions: { code: "variableRequiresValidType" }
+        }, {
+          message: "Field 'analyticsIndicators' doesn't exist on type 'City'",
+          extensions: { code: "undefinedField" }
+        } ]
+      }));
       if (body.query.includes("query CityProfile")) {
         return Promise.resolve(
           reply(200, { data: { city: { slug: "sp", consentTermVersion: "v3", profile: { name: "São Paulo", uf: "SP", ibgeCode: "3550308" } } } })
@@ -195,7 +203,9 @@ describe("CityDetail", () => {
 
     await user.click(screen.getByRole("button", { name: "Analytics" }));
     await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(2));
-    expect(screen.getAllByRole("alert")[0].textContent).toMatch(/o api do módulo 14 precisa subir antes do maintenance/);
+    for (const alert of screen.getAllByRole("alert")) {
+      expect(alert.textContent).toMatch(/o api do módulo 14 precisa subir antes do maintenance/);
+    }
     expect(operationCalls(fetchMock, "CityAnalyticsStatus")).toHaveLength(1);
     expect(operationCalls(fetchMock, "CityAnalyticsIndicators")).toHaveLength(1);
 

@@ -60,17 +60,21 @@ const errorBox: CSSProperties = {
   wordBreak: "break-word"
 };
 
-// Erro que derrubou a consulta inteira. `undefinedField` é a validação do
-// graphql-ruby: o api ainda não tem os campos (ordem de deploy: api antes).
+// Códigos da validação do graphql-ruby que um api sem o módulo 14 devolve:
+// `undefinedField` (campo inexistente) e `variableRequiresValidType` (o tipo
+// ISO8601Date das variáveis também não existe, e vem antes na lista de erros).
+const OLD_API_CODES = new Set([ "undefinedField", "variableRequiresValidType" ]);
+
+// Erro que derrubou a consulta inteira (ordem de deploy: api antes).
 function requestErrorText(err: unknown): string {
-  if (err instanceof GraphQLRefusal && err.code === "undefinedField") {
+  if (err instanceof GraphQLRefusal && OLD_API_CODES.has(err.code)) {
     return "esta API ainda não tem os campos de Analytics — o api do módulo 14 precisa subir antes do maintenance";
   }
   return err instanceof Error ? err.message : "erro inesperado";
 }
 
 // Mesmo critério do CityDetail: o refusal do campo, ou da cidade inteira
-// quando o campo não nulo anulou `city`.
+// quando um campo não nulo (analyticsIndicators) anulou `city`.
 function fieldError(fieldErrors: GraphQLRefusal[], field: string): GraphQLRefusal | undefined {
   return fieldErrors.find((refusal) => {
     const path = refusal.path ?? [];
@@ -147,7 +151,7 @@ export function AnalyticsTab({ slug }: { slug: string }) {
         {rows && rows.length > 0 && (
           <>
             <p style={{ margin: 0, fontSize: 11.5, color: "var(--ink3)" }}>
-              “oculto”: contagem de 1 a 4, suprimida na cidade. “sem dado”: a cidade não publicou o indicador naquela semana, ou a taxa não tinha denominador.
+              “oculto”: contagem de 1 a 4, suprimida na cidade (nas taxas, numerador ou denominador de 1 a 4). “sem dado”: a cidade não publicou o indicador naquela semana, ou a taxa não tinha denominador.
             </p>
             <DataTable<string>
               columns={[

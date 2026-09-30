@@ -80,7 +80,7 @@ execução, quando consolidou e publicou com sucesso, último erro) e os seis
 indicadores semanais que ela publicou na plataforma nas últimas 12 semanas
 fechadas (`analyticsIndicators`). "Dados desatualizados" aparece quando a
 última consolidação bem-sucedida tem mais de 36 h, ou nunca houve. Contagem
-de 1 a 4 aparece como "oculto"; semana sem publicação, "sem dado".
+de 1 a 4 aparece como "oculto" (nas taxas, numerador ou denominador de 1 a 4); semana sem publicação, "sem dado".
 
 A aba faz duas consultas próprias, nenhuma junto do topo da ficha: o estado
 lê o banco da cidade, e os indicadores, a plataforma. Uma cidade

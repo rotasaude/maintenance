@@ -50,6 +50,27 @@ function undefinedFieldReply(field: string) {
   });
 }
 
+// Forma REAL devolvida pelo api antigo para a consulta de indicadores: o tipo
+// ISO8601Date não existe lá, então o 1º erro é de variável, não de campo.
+function oldApiIndicatorsReply() {
+  return reply(200, {
+    errors: [
+      {
+        message: "ISO8601Date isn't a defined input type (on $from) (Did you mean `ISO8601DateTime`?)",
+        extensions: { code: "variableRequiresValidType", typeName: "ISO8601Date", variableName: "from" }
+      },
+      {
+        message: "ISO8601Date isn't a defined input type (on $to) (Did you mean `ISO8601DateTime`?)",
+        extensions: { code: "variableRequiresValidType", typeName: "ISO8601Date", variableName: "to" }
+      },
+      {
+        message: "Field 'analyticsIndicators' doesn't exist on type 'City'",
+        extensions: { code: "undefinedField", typeName: "City", fieldName: "analyticsIndicators" }
+      }
+    ]
+  });
+}
+
 function renderTab() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function wrapper({ children }: { children: ReactNode }) {
@@ -177,7 +198,7 @@ describe("AnalyticsTab", () => {
   });
 
   it("api antiga sem os campos: a aba explica, sem derrubar", async () => {
-    route(() => undefinedFieldReply("analyticsStatus"), () => undefinedFieldReply("analyticsIndicators"));
+    route(() => undefinedFieldReply("analyticsStatus"), () => oldApiIndicatorsReply());
     renderTab();
 
     await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(2));
