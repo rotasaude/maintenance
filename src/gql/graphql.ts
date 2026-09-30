@@ -14,6 +14,8 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** An ISO 8601-encoded date */
+  ISO8601Date: { input: string; output: string; }
   /** An ISO 8601-encoded datetime */
   ISO8601DateTime: { input: string; output: string; }
   /** Represents untyped JSON */
@@ -35,6 +37,31 @@ export type AlertRecipient = {
   escalationOrder: Scalars['Int']['output'];
 };
 
+/**
+ * Indicador semanal publicado da cidade inteira (ADR 0025), lido do banco de
+ * plataforma. Suprimido (1 a 4, ou taxa com numerador/denominador nessa faixa) = value nulo.
+ */
+export type AnalyticsIndicator = {
+  __typename?: 'AnalyticsIndicator';
+  indicator: Scalars['String']['output'];
+  suppressed: Scalars['Boolean']['output'];
+  value?: Maybe<Scalars['Float']['output']>;
+  weekStart: Scalars['ISO8601Date']['output'];
+};
+
+/**
+ * Estado da consolidação do Analytics da cidade (analytics_runs). lastError é
+ * classe e primeira linha da mensagem, nunca payload.
+ */
+export type AnalyticsStatus = {
+  __typename?: 'AnalyticsStatus';
+  lastError?: Maybe<Scalars['String']['output']>;
+  lastPublishedAt?: Maybe<Scalars['ISO8601DateTime']['output']>;
+  lastRunStatus?: Maybe<Scalars['String']['output']>;
+  lastSucceededAt?: Maybe<Scalars['ISO8601DateTime']['output']>;
+  stale: Scalars['Boolean']['output'];
+};
+
 /** Um registro da auditoria de manutenção */
 export type AuditEvent = {
   __typename?: 'AuditEvent';
@@ -53,6 +80,8 @@ export type City = {
   __typename?: 'City';
   accounts: Array<CityAccount>;
   alertRecipients: Array<AlertRecipient>;
+  analyticsIndicators: Array<AnalyticsIndicator>;
+  analyticsStatus?: Maybe<AnalyticsStatus>;
   channel?: Maybe<CityChannel>;
   consentTermVersion?: Maybe<Scalars['String']['output']>;
   counts?: Maybe<CityCounts>;
@@ -67,6 +96,13 @@ export type City = {
   slug: Scalars['String']['output'];
   status: CityStatus;
   uf?: Maybe<Scalars['String']['output']>;
+};
+
+
+/** Uma cidade. Só este tipo alcança o banco da cidade, e só por city(slug:). */
+export type CityAnalyticsIndicatorsArgs = {
+  from: Scalars['ISO8601Date']['input'];
+  to: Scalars['ISO8601Date']['input'];
 };
 
 /**
@@ -468,6 +504,22 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MeQuery = { __typename?: 'Query', me: { __typename?: 'Maintainer', id: string, emailAddress: string } };
 
+export type CityAnalyticsStatusQueryVariables = Exact<{
+  slug: Scalars['String']['input'];
+}>;
+
+
+export type CityAnalyticsStatusQuery = { __typename?: 'Query', city?: { __typename?: 'City', slug: string, analyticsStatus?: { __typename?: 'AnalyticsStatus', lastRunStatus?: string | null, lastSucceededAt?: string | null, lastPublishedAt?: string | null, lastError?: string | null, stale: boolean } | null } | null };
+
+export type CityAnalyticsIndicatorsQueryVariables = Exact<{
+  slug: Scalars['String']['input'];
+  from: Scalars['ISO8601Date']['input'];
+  to: Scalars['ISO8601Date']['input'];
+}>;
+
+
+export type CityAnalyticsIndicatorsQuery = { __typename?: 'Query', city?: { __typename?: 'City', slug: string, analyticsIndicators: Array<{ __typename?: 'AnalyticsIndicator', weekStart: string, indicator: string, value?: number | null, suppressed: boolean }> } | null };
+
 export type MaintainersQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -636,6 +688,8 @@ export type RevokeMaintenanceTokenMutation = { __typename?: 'Mutation', revokeMa
 
 
 export const MeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"emailAddress"}}]}}]}}]} as unknown as DocumentNode<MeQuery, MeQueryVariables>;
+export const CityAnalyticsStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"CityAnalyticsStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"city"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"analyticsStatus"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lastRunStatus"}},{"kind":"Field","name":{"kind":"Name","value":"lastSucceededAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastPublishedAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"stale"}}]}}]}}]}}]} as unknown as DocumentNode<CityAnalyticsStatusQuery, CityAnalyticsStatusQueryVariables>;
+export const CityAnalyticsIndicatorsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"CityAnalyticsIndicators"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"from"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ISO8601Date"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"to"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ISO8601Date"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"city"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"analyticsIndicators"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"from"},"value":{"kind":"Variable","name":{"kind":"Name","value":"from"}}},{"kind":"Argument","name":{"kind":"Name","value":"to"},"value":{"kind":"Variable","name":{"kind":"Name","value":"to"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"weekStart"}},{"kind":"Field","name":{"kind":"Name","value":"indicator"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"suppressed"}}]}}]}}]}}]} as unknown as DocumentNode<CityAnalyticsIndicatorsQuery, CityAnalyticsIndicatorsQueryVariables>;
 export const MaintainersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Maintainers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"maintainers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"emailAddress"}},{"kind":"Field","name":{"kind":"Name","value":"active"}},{"kind":"Field","name":{"kind":"Name","value":"enrolled"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<MaintainersQuery, MaintainersQueryVariables>;
 export const AuditEventsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AuditEvents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"since"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ISO8601DateTime"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"until"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ISO8601DateTime"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"maintainerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"module"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"outcome"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"auditEvents"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"since"},"value":{"kind":"Variable","name":{"kind":"Name","value":"since"}}},{"kind":"Argument","name":{"kind":"Name","value":"until"},"value":{"kind":"Variable","name":{"kind":"Name","value":"until"}}},{"kind":"Argument","name":{"kind":"Name","value":"maintainerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"maintainerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"module"},"value":{"kind":"Variable","name":{"kind":"Name","value":"module"}}},{"kind":"Argument","name":{"kind":"Name","value":"outcome"},"value":{"kind":"Variable","name":{"kind":"Name","value":"outcome"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"module"}},{"kind":"Field","name":{"kind":"Name","value":"outcome"}},{"kind":"Field","name":{"kind":"Name","value":"occurredAt"}},{"kind":"Field","name":{"kind":"Name","value":"maintainerId"}},{"kind":"Field","name":{"kind":"Name","value":"login"}},{"kind":"Field","name":{"kind":"Name","value":"correlationId"}}]}}]}}]} as unknown as DocumentNode<AuditEventsQuery, AuditEventsQueryVariables>;
 export const CitiesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Cities"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"CityStatus"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cities"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"uf"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"schemaVersion"}},{"kind":"Field","name":{"kind":"Name","value":"schemaBehind"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CitiesQuery, CitiesQueryVariables>;

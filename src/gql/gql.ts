@@ -15,6 +15,8 @@ import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/
  */
 type Documents = {
     "query Me { me { id emailAddress } }": typeof types.MeDocument,
+    "\n  query CityAnalyticsStatus($slug: String!) {\n    city(slug: $slug) {\n      slug\n      analyticsStatus { lastRunStatus lastSucceededAt lastPublishedAt lastError stale }\n    }\n  }\n": typeof types.CityAnalyticsStatusDocument,
+    "\n  query CityAnalyticsIndicators($slug: String!, $from: ISO8601Date!, $to: ISO8601Date!) {\n    city(slug: $slug) {\n      slug\n      analyticsIndicators(from: $from, to: $to) { weekStart indicator value suppressed }\n    }\n  }\n": typeof types.CityAnalyticsIndicatorsDocument,
     "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n": typeof types.MaintainersDocument,
     "\n  query AuditEvents($since: ISO8601DateTime, $until: ISO8601DateTime, $maintainerId: ID, $module: String, $outcome: String, $limit: Int) {\n    auditEvents(since: $since, until: $until, maintainerId: $maintainerId, module: $module, outcome: $outcome, limit: $limit) {\n      name module outcome occurredAt maintainerId login correlationId\n    }\n  }\n": typeof types.AuditEventsDocument,
     "\n  query Cities($status: CityStatus) {\n    cities(status: $status) { slug name uf status schemaVersion schemaBehind createdAt }\n  }\n": typeof types.CitiesDocument,
@@ -39,6 +41,8 @@ type Documents = {
 };
 const documents: Documents = {
     "query Me { me { id emailAddress } }": types.MeDocument,
+    "\n  query CityAnalyticsStatus($slug: String!) {\n    city(slug: $slug) {\n      slug\n      analyticsStatus { lastRunStatus lastSucceededAt lastPublishedAt lastError stale }\n    }\n  }\n": types.CityAnalyticsStatusDocument,
+    "\n  query CityAnalyticsIndicators($slug: String!, $from: ISO8601Date!, $to: ISO8601Date!) {\n    city(slug: $slug) {\n      slug\n      analyticsIndicators(from: $from, to: $to) { weekStart indicator value suppressed }\n    }\n  }\n": types.CityAnalyticsIndicatorsDocument,
     "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n": types.MaintainersDocument,
     "\n  query AuditEvents($since: ISO8601DateTime, $until: ISO8601DateTime, $maintainerId: ID, $module: String, $outcome: String, $limit: Int) {\n    auditEvents(since: $since, until: $until, maintainerId: $maintainerId, module: $module, outcome: $outcome, limit: $limit) {\n      name module outcome occurredAt maintainerId login correlationId\n    }\n  }\n": types.AuditEventsDocument,
     "\n  query Cities($status: CityStatus) {\n    cities(status: $status) { slug name uf status schemaVersion schemaBehind createdAt }\n  }\n": types.CitiesDocument,
@@ -80,6 +84,14 @@ export function graphql(source: string): unknown;
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query Me { me { id emailAddress } }"): (typeof documents)["query Me { me { id emailAddress } }"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CityAnalyticsStatus($slug: String!) {\n    city(slug: $slug) {\n      slug\n      analyticsStatus { lastRunStatus lastSucceededAt lastPublishedAt lastError stale }\n    }\n  }\n"): (typeof documents)["\n  query CityAnalyticsStatus($slug: String!) {\n    city(slug: $slug) {\n      slug\n      analyticsStatus { lastRunStatus lastSucceededAt lastPublishedAt lastError stale }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CityAnalyticsIndicators($slug: String!, $from: ISO8601Date!, $to: ISO8601Date!) {\n    city(slug: $slug) {\n      slug\n      analyticsIndicators(from: $from, to: $to) { weekStart indicator value suppressed }\n    }\n  }\n"): (typeof documents)["\n  query CityAnalyticsIndicators($slug: String!, $from: ISO8601Date!, $to: ISO8601Date!) {\n    city(slug: $slug) {\n      slug\n      analyticsIndicators(from: $from, to: $to) { weekStart indicator value suppressed }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

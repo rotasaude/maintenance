@@ -16,6 +16,29 @@ type AlertRecipient {
 }
 
 """
+Indicador semanal publicado da cidade inteira (ADR 0025), lido do banco de
+plataforma. Suprimido (1 a 4, ou taxa com numerador/denominador nessa faixa) = value nulo.
+"""
+type AnalyticsIndicator {
+  indicator: String!
+  suppressed: Boolean!
+  value: Float
+  weekStart: ISO8601Date!
+}
+
+"""
+Estado da consolidação do Analytics da cidade (analytics_runs). lastError é
+classe e primeira linha da mensagem, nunca payload.
+"""
+type AnalyticsStatus {
+  lastError: String
+  lastPublishedAt: ISO8601DateTime
+  lastRunStatus: String
+  lastSucceededAt: ISO8601DateTime
+  stale: Boolean!
+}
+
+"""
 Um registro da auditoria de manutenção
 """
 type AuditEvent {
@@ -38,6 +61,8 @@ Uma cidade. Só este tipo alcança o banco da cidade, e só por city(slug:).
 type City {
   accounts: [CityAccount!]!
   alertRecipients: [AlertRecipient!]!
+  analyticsIndicators(from: ISO8601Date!, to: ISO8601Date!): [AnalyticsIndicator!]!
+  analyticsStatus: AnalyticsStatus
   channel: CityChannel
   consentTermVersion: String
   counts: CityCounts
@@ -177,6 +202,11 @@ type FailedJob {
   errorClass: String
   failedAt: ISO8601DateTime!
 }
+
+"""
+An ISO 8601-encoded date
+"""
+scalar ISO8601Date @specifiedBy(url: "https://tools.ietf.org/html/rfc3339")
 
 """
 An ISO 8601-encoded datetime
