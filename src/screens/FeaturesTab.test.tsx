@@ -248,4 +248,37 @@ describe("FeaturesTab", () => {
     expect((await screen.findByRole("alert")).textContent)
       .toMatch(/o api do módulo 16 precisa subir antes do maintenance/);
   });
+
+  it("ato aceito sem feature devolvida: diz que foi feito e relê a lista", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: null } } }));
+      }
+      return Promise.resolve(featuresReply([ LEDI_OFF ]));
+    });
+    renderTab();
+    await screen.findByText("ledi_export");
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar ledi_export" }));
+
+    expect((await screen.findByRole("status")).textContent).toBe("feito — confira o estado na lista.");
+    await waitFor(() => expect(calls(fetchMock, "query CityFeatures")).toHaveLength(2));
+  });
+
+  it("erro de campo em recordMode com city nula mostra código e mensagem", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(reply(200, {
+      data: { city: null },
+      errors: [ {
+        message: "falha ao ler", path: [ "city", "recordMode" ],
+        extensions: { code: "CITY_READ_FAILED" }
+      } ]
+    })));
+    renderTab();
+
+    expect((await screen.findByRole("alert")).textContent).toBe("CITY_READ_FAILED — falha ao ler");
+    expect(screen.queryByRole("button", { name: "ligar" })).toBeNull();
+  });
 });

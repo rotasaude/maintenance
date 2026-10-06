@@ -103,14 +103,21 @@ export function FeaturesTab({ slug }: { slug: string }) {
         setFailure(setFeatureErrorText(payload.errors));
         return;
       }
-      if (payload.feature) setDone(doneText(payload.feature));
+      // O api degrada para { ok: true, feature: null } se o mapeamento do
+      // payload falhar depois do commit: o ato valeu, só falta o que mostrar.
+      setDone(payload.feature ? doneText(payload.feature) : "feito — confira o estado na lista.");
       void queryClient.invalidateQueries({ queryKey });
     },
     onError: (err) => setFailure(err instanceof Error ? err.message : "erro inesperado")
   });
 
   const city = query.data?.data?.city ?? null;
-  const err = query.data ? fieldError(query.data.fieldErrors, "features") : undefined;
+  // Com `city` nula (campo não-nulo falhou, ex.: recordMode) não há tela a
+  // desenhar: mostra o primeiro erro de campo da cidade, qualquer que seja.
+  const err = query.data
+    ? fieldError(query.data.fieldErrors, "features") ??
+      (city ? undefined : query.data.fieldErrors.find((refusal) => refusal.path?.[0] === "city"))
+    : undefined;
   const profileErr = query.data ? fieldError(query.data.fieldErrors, "profile") : undefined;
   const ibge = profileErr ? `indisponível (${profileErr.code})` : ibgeCodeText(city?.profile?.ibgeCode);
 
