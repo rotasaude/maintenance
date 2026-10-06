@@ -63,7 +63,7 @@ describe("CityDetail", () => {
     // Nenhuma aba consultada ainda — só a consulta de topo saiu.
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(operationCalls(fetchMock, "CityHeader")).toHaveLength(1);
-    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityAccounts", "CityCounts", "CityOperations", "CityAnalyticsStatus", "CityAnalyticsIndicators" ]) {
+    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityAccounts", "CityCounts", "CityOperations", "CityAnalyticsStatus", "CityAnalyticsIndicators", "CityFeatures" ]) {
       expect(operationCalls(fetchMock, op)).toHaveLength(0);
     }
 
@@ -81,7 +81,7 @@ describe("CityDetail", () => {
     expect(await screen.findByText("op1")).not.toBeNull();
 
     // Abrir "Contas" não disparou nenhuma outra aba.
-    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityCounts", "CityOperations", "CityAnalyticsStatus", "CityAnalyticsIndicators" ]) {
+    for (const op of [ "CityProfile", "CityProtocolVersions", "CityRecipients", "CityCounts", "CityOperations", "CityAnalyticsStatus", "CityAnalyticsIndicators", "CityFeatures" ]) {
       expect(operationCalls(fetchMock, op)).toHaveLength(0);
     }
   });
@@ -208,6 +208,44 @@ describe("CityDetail", () => {
     }
     expect(operationCalls(fetchMock, "CityAnalyticsStatus")).toHaveLength(1);
     expect(operationCalls(fetchMock, "CityAnalyticsIndicators")).toHaveLength(1);
+
+    // O topo continua, e a consulta dele não se repetiu.
+    expect(screen.getByText("+55 11 90000-0000")).not.toBeNull();
+    expect(operationCalls(fetchMock, "CityHeader")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Perfil" }));
+    expect(await screen.findByText("3550308")).not.toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("api antiga: só a aba Funcionalidades falha; o topo e as outras abas seguem", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((_url, init) => {
+      const body = bodyOf([ _url, init ]);
+      if (body.query.includes("query CityHeader")) return Promise.resolve(HEADER_REPLY.clone());
+      if (body.query.includes("query CityFeatures")) {
+        return Promise.resolve(reply(200, {
+          errors: [ { message: "Field 'recordMode' doesn't exist on type 'City'", extensions: { code: "undefinedField" } } ]
+        }));
+      }
+      if (body.query.includes("query CityProfile")) {
+        return Promise.resolve(
+          reply(200, { data: { city: { slug: "sp", consentTermVersion: "v3", profile: { name: "São Paulo", uf: "SP", ibgeCode: "3550308" } } } })
+        );
+      }
+      return Promise.resolve(reply(200, { data: { city: { slug: "sp" } } }));
+    });
+
+    renderDetail();
+    await screen.findByText("São Paulo");
+
+    // O topo nunca pede interruptor, modo nem IBGE de plataforma.
+    expect(bodyOf(operationCalls(fetchMock, "CityHeader")[0]).query).not.toMatch(/features|recordMode|ibgeCode/);
+
+    await user.click(screen.getByRole("button", { name: "Funcionalidades" }));
+    expect((await screen.findByRole("alert")).textContent)
+      .toMatch(/o api do módulo 16 precisa subir antes do maintenance/);
+    expect(operationCalls(fetchMock, "CityFeatures")).toHaveLength(1);
 
     // O topo continua, e a consulta dele não se repetiu.
     expect(screen.getByText("+55 11 90000-0000")).not.toBeNull();

@@ -41,7 +41,7 @@ a autenticação é obrigatória e carrega todo o risco.
 
 | Tela | O que faz |
 |---|---|
-| **Cidades** | Catálogo; o detalhe de cada cidade tem as abas Perfil, Protocolos, Destinatários, Contas, Contagens, Operação e Analytics. Cada aba é uma consulta própria, disparada só quando é aberta |
+| **Cidades** | Catálogo; o detalhe de cada cidade tem as abas Perfil, Protocolos, Destinatários, Contas, Contagens, Operação, Analytics e Funcionalidades. Cada aba é uma consulta própria, disparada só quando é aberta |
 | **Mantenedores** | Lista, convite e desativação. O convite só é registrado aqui; o link sai do `rake maintainer:invite` no servidor |
 | **Tokens** | Tokens de serviço para automação: criação com step-up, lista e revogação. O segredo aparece **uma única vez** e sai do cache do React Query logo depois |
 | **Auditoria** | Trilha de auditoria da plataforma, filtrável por mantenedor e período. Só leitura |
@@ -89,6 +89,28 @@ inalcançável derruba só o quadro do estado.
 > **Ordem de deploy:** o `api` sobe **antes** do maintenance. Contra um api
 > sem os campos do módulo 14, a validação recusa as consultas da aba
 > Analytics, e só ela mostra o aviso; o topo e as outras abas seguem.
+
+### Funcionalidades
+
+A aba **Funcionalidades** do detalhe de cidade (módulo 16, ADR 0028) lista os
+interruptores de funcionalidade da cidade (`features`): chave, descrição,
+estado (desligada; ligada e utilizável; ligada, falta pré-requisito), o que
+falta e a última mudança (quando e por qual mantenedor). Ligar e desligar
+(`setCityFeature`) pede dois cliques: o primeiro só troca o rótulo do botão
+para "confirmar: …". Ligar não exige os pré-requisitos: a funcionalidade fica
+ligada, e a cidade só a usa quando o que falta for resolvido (credencial no
+dashboard; modo, código IBGE e endereço do PEC no console admin). Depois do
+ato, a tela diz o estado que o api devolveu.
+
+O modo de prontuário (`recordMode`) e o código IBGE (`profile.ibgeCode`, o
+mesmo da aba Perfil) aparecem só para leitura: quem os muda é o operador, no
+admin. Com o banco da cidade inalcançável, a aba continua: o que falta aparece
+como "banco da cidade inalcançável", o IBGE como "indisponível", e o
+liga/desliga segue funcionando.
+
+> **Ordem de deploy:** o `api` sobe **antes** do maintenance. Contra um api
+> sem os campos do módulo 16, a validação recusa a consulta da aba
+> Funcionalidades, e só ela mostra o aviso; o topo e as outras abas seguem.
 
 ## Subir em dev
 

@@ -12,6 +12,7 @@ import { Button } from "../components/Button";
 import { STATUS_LABELS } from "./Cities";
 import { ProtocolsTab } from "./ProtocolsTab";
 import { AnalyticsTab } from "./AnalyticsTab";
+import { FeaturesTab } from "./FeaturesTab";
 
 // Detalhe de uma cidade (Task 6). O topo (plataforma + canal) é UMA
 // consulta, disparada ao abrir. Cada aba é OUTRA consulta, só disparada
@@ -23,7 +24,9 @@ import { AnalyticsTab } from "./AnalyticsTab";
 // Analytics (módulo 14) segue o mesmo molde (`AnalyticsTab`), com consultas
 // PRÓPRIAS: contra um api sem os campos do módulo 14, a validação do
 // GraphQL recusa o documento inteiro, e só aquela aba pode cair — nunca o
-// topo. Por isso nenhum campo de Analytics entra no CityHeader.
+// topo. Por isso nenhum campo de Analytics entra no CityHeader. A aba
+// Funcionalidades (módulo 16) segue o mesmo molde (`FeaturesTab`): nenhum
+// campo de interruptor, modo ou IBGE de plataforma entra no CityHeader.
 const CityHeaderQuery = graphql(`
   query CityHeader($slug: String!) {
     city(slug: $slug) {
@@ -63,7 +66,7 @@ const CityOperationsQuery = graphql(`
   }
 `);
 
-type TabKey = "profile" | "protocols" | "alertRecipients" | "accounts" | "counts" | "operations" | "analytics";
+type TabKey = "profile" | "protocols" | "alertRecipients" | "accounts" | "counts" | "operations" | "analytics" | "features";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "profile", label: "Perfil" },
@@ -72,7 +75,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "accounts", label: "Contas" },
   { key: "counts", label: "Contagens" },
   { key: "operations", label: "Operação" },
-  { key: "analytics", label: "Analytics" }
+  { key: "analytics", label: "Analytics" },
+  { key: "features", label: "Funcionalidades" }
 ];
 
 const dlStyle: CSSProperties = {
@@ -248,6 +252,8 @@ export function CityDetail({ slug, onBack }: { slug: string; onBack(): void }) {
           {activeTab === "protocols" && <ProtocolsTab slug={slug} />}
 
           {activeTab === "analytics" && <AnalyticsTab slug={slug} />}
+
+          {activeTab === "features" && <FeaturesTab slug={slug} />}
 
           {activeTab === "alertRecipients" && renderTab(alertRecipients, "alertRecipients", (c) => (
             c.alertRecipients.length === 0 ? <EmptyState message="nenhum destinatário" /> : (
