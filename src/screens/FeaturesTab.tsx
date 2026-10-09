@@ -5,7 +5,7 @@ import { graphql } from "../gql";
 import { GraphQLRefusal } from "../lib/errors";
 import { fmtWhen } from "../lib/analytics";
 import {
-  doneText, featureStatus, ibgeCodeText, missingSummary, recordModeText, setFeatureErrorText
+  doneText, featureLabel, featureStatus, ibgeCodeText, missingSummary, recordModeText, setFeatureErrorText
 } from "../lib/features";
 import { Panel } from "../components/Panel";
 import { Button } from "../components/Button";
@@ -14,6 +14,8 @@ import { Tag } from "../components/Tag";
 import { DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { SignaturePlatformPanel } from "./SignaturePlatformPanel";
+import { PSC_MOCK_NOTICE, pscModeNotice } from "../lib/signature";
 
 // Aba Funcionalidades (módulo 16, F-16.1; ADR 0028; contratos §3): os
 // interruptores da cidade e o liga/desliga. Só o maintenance escreve
@@ -119,6 +121,7 @@ export function FeaturesTab({ slug }: { slug: string }) {
       (city ? undefined : query.data.fieldErrors.find((refusal) => refusal.path?.[0] === "city"))
     : undefined;
   const profileErr = query.data ? fieldError(query.data.fieldErrors, "profile") : undefined;
+  const pscSimulated = city ? pscModeNotice(city.features).simulated : false;
   const ibge = profileErr ? `indisponível (${profileErr.code})` : ibgeCodeText(city?.profile?.ibgeCode);
 
   return (
@@ -144,12 +147,28 @@ export function FeaturesTab({ slug }: { slug: string }) {
           </Panel>
 
           <Panel title="Funcionalidades">
+            {pscSimulated && (
+              <p role="note" aria-label="modo do PSC" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
+                {PSC_MOCK_NOTICE}
+              </p>
+            )}
             {done && <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{done}</p>}
             {failure && <ErrorState message={failure} />}
             {city.features.length === 0 ? <EmptyState message="nenhuma funcionalidade no catálogo" /> : (
               <DataTable<Feature>
                 columns={[
-                  { key: "key", label: "Chave" },
+                  {
+                    key: "key", label: "Chave",
+                    render: (f) => {
+                      const label = featureLabel(f.key);
+                      return label ? (
+                        <>
+                          <div>{f.key}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--ink3)" }}>{label}</div>
+                        </>
+                      ) : f.key;
+                    }
+                  },
                   { key: "description", label: "Descrição" },
                   {
                     key: "state", label: "Estado",
@@ -181,6 +200,10 @@ export function FeaturesTab({ slug }: { slug: string }) {
               />
             )}
           </Panel>
+
+          {/* Módulo 19b: prestadores e signer (plataforma), só onde se decide
+              ligar a assinatura digital. Consulta própria (SignaturePlatformPanel). */}
+          {city.features.some((f) => f.key === "digital_signature") && <SignaturePlatformPanel pscMock={pscSimulated} />}
         </>
       )}
     </div>

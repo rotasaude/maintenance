@@ -36,6 +36,7 @@ type Documents = {
     "\n  mutation ActivateProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    activateProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.ActivateProtocolDocument,
     "\n  mutation RetireProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    retireProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.RetireProtocolDocument,
     "\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!, $expectedVersion: Int) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code, expectedVersion: $expectedVersion) {\n      ok\n      revertedToVersion\n      errors { path message }\n    }\n  }\n": typeof types.RevertProtocolActivationDocument,
+    "\n  query SignaturePlatform {\n    signatureProviders { key configured lastCheckAt lastCheckOk }\n    signerStatus { reachable version crlUpdatedAt }\n  }\n": typeof types.SignaturePlatformDocument,
     "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n": typeof types.MaintenanceTokensDocument,
     "\n  query CitiesForTokenScope { cities { slug name } }\n": typeof types.CitiesForTokenScopeDocument,
     "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n": typeof types.CreateMaintenanceTokenDocument,
@@ -64,6 +65,7 @@ const documents: Documents = {
     "\n  mutation ActivateProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    activateProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.ActivateProtocolDocument,
     "\n  mutation RetireProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    retireProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.RetireProtocolDocument,
     "\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!, $expectedVersion: Int) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code, expectedVersion: $expectedVersion) {\n      ok\n      revertedToVersion\n      errors { path message }\n    }\n  }\n": types.RevertProtocolActivationDocument,
+    "\n  query SignaturePlatform {\n    signatureProviders { key configured lastCheckAt lastCheckOk }\n    signerStatus { reachable version crlUpdatedAt }\n  }\n": types.SignaturePlatformDocument,
     "\n  query MaintenanceTokens {\n    maintenanceTokens { id name access citySlugs expiresAt revokedAt lastUsedAt }\n  }\n": types.MaintenanceTokensDocument,
     "\n  query CitiesForTokenScope { cities { slug name } }\n": types.CitiesForTokenScopeDocument,
     "\n  mutation CreateMaintenanceToken($name: String!, $access: String!, $citySlugs: [String!], $expiresAt: ISO8601DateTime!, $code: String!) {\n    createMaintenanceToken(name: $name, access: $access, citySlugs: $citySlugs, expiresAt: $expiresAt, code: $code) {\n      ok secretOnce errors { path message }\n    }\n  }\n": types.CreateMaintenanceTokenDocument,
@@ -172,6 +174,10 @@ export function graphql(source: "\n  mutation RetireProtocol($citySlug: String!,
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!, $expectedVersion: Int) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code, expectedVersion: $expectedVersion) {\n      ok\n      revertedToVersion\n      errors { path message }\n    }\n  }\n"): (typeof documents)["\n  mutation RevertProtocolActivation($citySlug: String!, $name: String!, $reason: String!, $code: String!, $expectedVersion: Int) {\n    revertProtocolActivation(citySlug: $citySlug, name: $name, reason: $reason, code: $code, expectedVersion: $expectedVersion) {\n      ok\n      revertedToVersion\n      errors { path message }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query SignaturePlatform {\n    signatureProviders { key configured lastCheckAt lastCheckOk }\n    signerStatus { reachable version crlUpdatedAt }\n  }\n"): (typeof documents)["\n  query SignaturePlatform {\n    signatureProviders { key configured lastCheckAt lastCheckOk }\n    signerStatus { reachable version crlUpdatedAt }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

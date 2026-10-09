@@ -108,6 +108,22 @@ admin. Com o banco da cidade inalcançável, a aba continua: o que falta aparece
 como "banco da cidade inalcançável", o IBGE como "indisponível", e o
 liga/desliga segue funcionando.
 
+**Assinatura digital (módulo 19b).** O interruptor `digital_signature` aparece
+na mesma lista e liga como os outros; ele precisa do `clinical_record` ligado
+e utilizável (falta: "prontuário da atenção primária (clinical_record)
+desligado"). Quando o catálogo da cidade traz `digital_signature`, a aba
+mostra também o quadro **Assinatura digital — prestadores e signer**, só
+leitura e da plataforma (vale para todas as cidades do ambiente): cada
+prestador de certificado em nuvem (VIDaaS, BirdID, SafeID, NeoID, RemoteID),
+se a credencial existe no api e como foi a última checagem; e o serviço
+`signer` (no ar, versão, última atualização das LCRs — aviso com mais de
+24 h). Credenciais e token nunca aparecem aqui. O interruptor
+`signature_psc_mock` ("PSC simulado (desenvolvimento)") só existe fora de
+produção e exige `digital_signature`; ligado, a aba e o quadro avisam que a
+cidade assina com o PSC simulado, sem validade jurídica. Em produção o api
+nem o oferece. Ordem de deploy: api → dashboard → maintenance; contra um api
+sem o 19b, só o quadro mostra o aviso.
+
 > **Ordem de deploy:** o `api` sobe **antes** do maintenance. Contra um api
 > sem os campos do módulo 16, a validação recusa a consulta da aba
 > Funcionalidades, e só ela mostra o aviso; o topo e as outras abas seguem.

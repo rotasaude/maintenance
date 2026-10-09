@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { FeaturesTab } from "./FeaturesTab";
+import { PSC_MOCK_NOTICE, PSC_REAL_NOTICE } from "../lib/signature";
 
 afterEach(cleanup);
 
@@ -280,5 +281,134 @@ describe("FeaturesTab", () => {
 
     expect((await screen.findByRole("alert")).textContent).toBe("CITY_READ_FAILED — falha ao ler");
     expect(screen.queryByRole("button", { name: "ligar" })).toBeNull();
+  });
+});
+
+describe("FeaturesTab — assinatura digital (módulo 19b)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const SIGNATURE_OFF: Feature = {
+    key: "digital_signature", description: "Assinatura digital ICP-Brasil da consulta", enabled: false, usable: false,
+    missing: [ "clinical_record_disabled" ], changedAt: null, changedBy: null
+  };
+  const PSC_MOCK_OFF: Feature = {
+    key: "signature_psc_mock", description: "PSC simulado para desenvolvimento", enabled: false, usable: false,
+    missing: [ "digital_signature_disabled" ], changedAt: null, changedBy: null
+  };
+  const PSC_MOCK_ON: Feature = { ...PSC_MOCK_OFF, enabled: true, changedAt: "2026-10-08T13:00:00Z", changedBy: "dev@local" };
+  const platform = () => reply(200, { data: {
+    signatureProviders: [ { key: "vidaas", configured: true, lastCheckAt: null, lastCheckOk: null } ],
+    signerStatus: { reachable: true, version: "1.0.0", crlUpdatedAt: new Date().toISOString() }
+  } });
+  function withCatalog(features: Feature[]) {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SignaturePlatform")) return Promise.resolve(platform());
+      return Promise.resolve(featuresReply(features));
+    });
+  }
+
+  it("digital_signature pelo mecanismo genérico: falta o prontuário e liga com dois cliques", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...SIGNATURE_OFF, enabled: true, changedAt: "2026-10-08T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ SIGNATURE_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SignaturePlatform")) return Promise.resolve(platform());
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    expect(await screen.findByText("digital_signature")).not.toBeNull();
+    expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar digital_signature" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "digital_signature", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "digital_signature ligada, mas ainda não utilizável — falta: prontuário da atenção primária (clinical_record) desligado."
+    );
+  });
+
+  it("com digital_signature no catálogo mostra os prestadores do ambiente; sem ela, nem consulta", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SignaturePlatform")) return Promise.resolve(platform());
+      return Promise.resolve(featuresReply([ SIGNATURE_OFF ]));
+    });
+    renderTab();
+    expect(await screen.findByRole("region", { name: "Assinatura digital — prestadores e signer (todas as cidades do ambiente)" }))
+      .not.toBeNull();
+    expect(await screen.findByText("VIDaaS (vidaas)")).not.toBeNull();
+    cleanup();
+
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ LEDI_OFF ])));
+    renderTab();
+    await screen.findByText("ledi_export");
+    expect(calls(fetchMock, "query SignaturePlatform")).toHaveLength(0);
+  });
+
+  it("api sem o 19b: o quadro explica a ordem de deploy e a aba segue", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SignaturePlatform")) {
+        return Promise.resolve(reply(200, { errors: [ {
+          message: "Field 'signatureProviders' doesn't exist on type 'Query'",
+          extensions: { code: "undefinedField", typeName: "Query", fieldName: "signatureProviders" }
+        } ] }));
+      }
+      return Promise.resolve(featuresReply([ SIGNATURE_OFF ]));
+    });
+    renderTab();
+    expect((await screen.findByRole("alert")).textContent).toMatch(/o api do módulo 19b precisa subir antes do maintenance/);
+    expect(screen.getByText("digital_signature")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "ligar" })).not.toBeNull();
+  });
+
+  it("signature_psc_mock tem rótulo e diz o pré-requisito", async () => {
+    withCatalog([ SIGNATURE_OFF, PSC_MOCK_OFF ]);
+    renderTab();
+    expect(await screen.findByText("signature_psc_mock")).not.toBeNull();
+    expect(screen.getByText("PSC simulado (desenvolvimento)")).not.toBeNull();
+    expect(screen.getByText("assinatura digital (digital_signature) desligada")).not.toBeNull();
+  });
+
+  it("PSC simulado ligado: aviso na aba e no quadro", async () => {
+    withCatalog([ SIGNATURE_OFF, PSC_MOCK_ON ]);
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do PSC" })).textContent).toBe(PSC_MOCK_NOTICE);
+    expect(screen.getByRole("note", { name: "modo do PSC desta cidade" }).textContent).toBe(PSC_MOCK_NOTICE);
+  });
+
+  it("PSC simulado desligado: sem aviso na aba; o quadro diz prestadores reais", async () => {
+    withCatalog([ SIGNATURE_OFF, PSC_MOCK_OFF ]);
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do PSC desta cidade" })).textContent).toBe(PSC_REAL_NOTICE);
+    expect(screen.queryByRole("note", { name: "modo do PSC" })).toBeNull();
+  });
+
+  it("catálogo sem o interruptor (produção): nada quebra", async () => {
+    withCatalog([ SIGNATURE_OFF ]);
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do PSC desta cidade" })).textContent).toBe(PSC_REAL_NOTICE);
+    await screen.findByText("VIDaaS (vidaas)");
+    expect(screen.queryByText("signature_psc_mock")).toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do PSC" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });

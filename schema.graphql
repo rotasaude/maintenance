@@ -464,6 +464,16 @@ type Query {
   O mantenedor da sessão corrente
   """
   me: Maintainer!
+
+  """
+  PSC de assinatura do ambiente: credencial presente e última checagem
+  """
+  signatureProviders: [SignatureProvider!]!
+
+  """
+  Estado do serviço interno de assinatura (signer)
+  """
+  signerStatus: SignerStatus!
 }
 
 """
@@ -516,6 +526,27 @@ type SetCityFeaturePayload {
   errors: [UserError!]!
   feature: CityFeature
   ok: Boolean!
+}
+
+"""
+PSC de assinatura em nuvem da plataforma (ADR 0032; contrato §8): a chave do
+catálogo, se há credencial no ambiente e a última conversa. Nunca segredo, URL
+ou resposta do PSC.
+"""
+type SignatureProvider {
+  configured: Boolean!
+  key: String!
+  lastCheckAt: ISO8601DateTime
+  lastCheckOk: Boolean
+}
+
+"""
+Serviço interno signer (ADR 0032; contrato §8): alcançável, versão e última atualização das LCRs.
+"""
+type SignerStatus {
+  crlUpdatedAt: ISO8601DateTime
+  reachable: Boolean!
+  version: String
 }
 
 """
