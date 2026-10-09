@@ -395,6 +395,29 @@ describe("FeaturesTab — assinatura digital (módulo 19b)", () => {
     expect(screen.getByRole("note", { name: "modo do PSC desta cidade" }).textContent).toBe(PSC_MOCK_NOTICE);
   });
 
+  it("ligar signature_psc_mock por dois cliques: após o refetch a aba avisa", async () => {
+    const user = userEvent.setup();
+    let listed = [ SIGNATURE_OFF, PSC_MOCK_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SignaturePlatform")) return Promise.resolve(platform());
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ SIGNATURE_OFF, PSC_MOCK_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: PSC_MOCK_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("signature_psc_mock")).not.toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do PSC" })).toBeNull();
+    // Duas linhas desligadas (digital_signature, signature_psc_mock): a do PSC é a segunda.
+    await user.click(screen.getAllByRole("button", { name: "ligar" })[1]);
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar signature_psc_mock" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect((await screen.findByRole("note", { name: "modo do PSC" })).textContent).toBe(PSC_MOCK_NOTICE);
+  });
+
   it("PSC simulado desligado: sem aviso na aba; o quadro diz prestadores reais", async () => {
     withCatalog([ SIGNATURE_OFF, PSC_MOCK_OFF ]);
     renderTab();

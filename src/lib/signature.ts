@@ -48,9 +48,9 @@ export function signerDetail(signer: SignerView): string {
 
 export const PSC_MOCK_KEY = "signature_psc_mock";
 export const PSC_MOCK_NOTICE =
-  "Esta cidade assina com o PSC SIMULADO — assinaturas sem validade jurídica (ambiente de desenvolvimento).";
+  "Esta cidade assina com o PSC SIMULADO — assinaturas sem validade jurídica (fora de produção).";
 export const PSC_REAL_NOTICE =
-  "Esta cidade assina com os prestadores reais configurados no ambiente.";
+  "Sem o PSC simulado: esta cidade usa só os prestadores reais configurados no ambiente.";
 
 // Aviso pelo estado LIGADO do interruptor (não pelo "utilizável"): ligado, a
 // cidade passa a usar só o simulado. Sem o interruptor no catálogo (produção)

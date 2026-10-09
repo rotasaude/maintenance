@@ -122,7 +122,9 @@ se a credencial existe no api e como foi a última checagem; e o serviço
 produção e exige `digital_signature`; ligado, a aba e o quadro avisam que a
 cidade assina com o PSC simulado, sem validade jurídica. Em produção o api
 nem o oferece. Ordem de deploy: api → dashboard → maintenance; contra um api
-sem o 19b, só o quadro mostra o aviso.
+sem o 19b o catálogo não traz `digital_signature` e o quadro nem aparece; se o
+catálogo trouxer a chave mas o schema não tiver os campos (api desencontrado),
+só o quadro mostra o aviso da ordem de deploy e a aba segue.
 
 > **Ordem de deploy:** o `api` sobe **antes** do maintenance. Contra um api
 > sem os campos do módulo 16, a validação recusa a consulta da aba

@@ -98,6 +98,7 @@ describe("SignaturePlatformPanel", () => {
     renderPanel();
     expect((await screen.findByRole("alert")).textContent)
       .toMatch(/o api do módulo 19b precisa subir antes do maintenance/);
+    expect(screen.getByRole("note", { name: "modo do PSC desta cidade" }).textContent).toBe(PSC_REAL_NOTICE);
   });
 
   it("atualizar relê", async () => {
