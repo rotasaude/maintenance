@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  doneText, featureStatus, ibgeCodeText, missingSummary, missingText, recordModeText, setFeatureErrorText
+  doneText, featureLabel, featureStatus, ibgeCodeText, missingSummary, missingText, recordModeText, setFeatureErrorText
 } from "./features";
 
 describe("recordModeText", () => {
@@ -26,6 +26,13 @@ describe("ibgeCodeText", () => {
 });
 
 describe("missingText e missingSummary", () => {
+  it("pré-requisitos do prontuário e da assinatura têm frase", () => {
+    expect(missingText("record_mode_not_record")).toBe("modo de prontuário diferente de record");
+    expect(missingText("clinical_record_disabled")).toBe("prontuário da atenção primária (clinical_record) desligado");
+    expect(missingText("digital_signature_disabled")).toBe("assinatura digital (digital_signature) desligada");
+    expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+
   it("traduz cada pré-requisito do catálogo", () => {
     expect(missingText("record_mode_off")).toBe("modo de prontuário desligado");
     expect(missingText("pec_url_missing")).toBe("endereço do PEC não preenchido");
@@ -88,5 +95,13 @@ describe("doneText", () => {
       .toBe("cadsus_lookup ligada e utilizável.");
     expect(doneText({ key: "ledi_export", enabled: true, usable: false, missing: [ "credential_missing:ledi" ] }))
       .toBe("ledi_export ligada, mas ainda não utilizável — falta: credencial LEDI não cadastrada.");
+  });
+});
+
+describe("featureLabel", () => {
+  it("nomeia o PSC simulado; chave desconhecida é null", () => {
+    expect(featureLabel("signature_psc_mock")).toBe("PSC simulado (desenvolvimento)");
+    expect(featureLabel("ledi_export")).toBeNull();
+    expect(featureLabel("pscnovo")).toBeNull();
   });
 });

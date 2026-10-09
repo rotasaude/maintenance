@@ -29,10 +29,25 @@ const MISSING_LABELS: Record<string, string> = {
   "credential_unauthorized:ledi": "credencial LEDI recusada no último teste",
   "credential_missing:cadsus": "credencial CADSUS não cadastrada",
   "credential_unauthorized:cadsus": "credencial CADSUS recusada no último teste",
+  // Módulo 19 (19a): clinical_record só é utilizável no modo record.
+  record_mode_not_record: "modo de prontuário diferente de record",
+  // Módulo 19b: digital_signature exige clinical_record ligado e utilizável.
+  clinical_record_disabled: "prontuário da atenção primária (clinical_record) desligado",
+  // Módulo 19b: signature_psc_mock exige digital_signature ligada.
+  digital_signature_disabled: "assinatura digital (digital_signature) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
 };
+
+// Nome em português de algumas chaves do catálogo (a chave crua continua na tela).
+const FEATURE_LABELS: Record<string, string> = {
+  signature_psc_mock: "PSC simulado (desenvolvimento)"
+};
+
+export function featureLabel(key: string): string | null {
+  return FEATURE_LABELS[key] ?? null;
+}
 
 export function missingText(code: string): string {
   return MISSING_LABELS[code] ?? code;
