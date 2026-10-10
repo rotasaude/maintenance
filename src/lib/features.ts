@@ -42,7 +42,9 @@ const MISSING_LABELS: Record<string, string> = {
 
 // Nome em português de algumas chaves do catálogo (a chave crua continua na tela).
 const FEATURE_LABELS: Record<string, string> = {
-  signature_psc_mock: "PSC simulado (desenvolvimento)"
+  signature_psc_mock: "PSC simulado (desenvolvimento)",
+  // Módulo 19c: exige clinical_record (missing: clinical_record_disabled, já traduzido acima).
+  clinical_documents: "Documentos clínicos (atestado, declaração, receita, requisição)"
 };
 
 export function featureLabel(key: string): string | null {

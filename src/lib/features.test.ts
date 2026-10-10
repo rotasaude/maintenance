@@ -105,3 +105,10 @@ describe("featureLabel", () => {
     expect(featureLabel("pscnovo")).toBeNull();
   });
 });
+
+describe("featureLabel do 19c", () => {
+  it("documentos clínicos têm nome em português; o pré-requisito já tem frase", () => {
+    expect(featureLabel("clinical_documents")).toBe("Documentos clínicos (atestado, declaração, receita, requisição)");
+    expect(missingText("clinical_record_disabled")).toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+});
