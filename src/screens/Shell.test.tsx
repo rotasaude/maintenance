@@ -34,7 +34,7 @@ describe("Shell", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("mostra o e-mail do mantenedor, a navegação com as quatro telas e 'sair' encerra a sessão", async () => {
+  it("mostra o e-mail do mantenedor, a navegação com as cinco telas e 'sair' encerra a sessão", async () => {
     const user = userEvent.setup();
     fetchMock.mockImplementation((url: string) => {
       const path = String(url);
@@ -46,7 +46,7 @@ describe("Shell", () => {
     renderShell();
 
     expect(await screen.findByText("mantenedor@rotasaude.app")).not.toBeNull();
-    for (const label of [ "Cidades", "Mantenedores", "Tokens", "Auditoria" ]) {
+    for (const label of [ "Cidades", "Medicamentos", "Mantenedores", "Tokens", "Auditoria" ]) {
       expect(screen.getByRole("button", { name: label })).not.toBeNull();
     }
     expect(screen.getByRole("button", { name: "Cidades" }).getAttribute("aria-current")).toBe("page");

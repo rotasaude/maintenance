@@ -42,6 +42,7 @@ a autenticação é obrigatória e carrega todo o risco.
 | Tela | O que faz |
 |---|---|
 | **Cidades** | Catálogo; o detalhe de cada cidade tem as abas Perfil, Protocolos, Destinatários, Contas, Contagens, Operação, Analytics e Funcionalidades. Cada aba é uma consulta própria, disparada só quando é aberta |
+| **Medicamentos** | Catálogo de medicamentos da plataforma (módulo 19c): versão atual do CATMAT (classe 6505), "importar o CATMAT" (Compras.gov; diz o que entrou, mudou e saiu), "importar as listas da Anvisa" (antimicrobianos e controlados) e os itens ocultos para revisão. Vale para todas as cidades do ambiente; uma importação por vez |
 | **Mantenedores** | Lista, convite e desativação. O convite só é registrado aqui; o link sai do `rake maintainer:invite` no servidor |
 | **Tokens** | Tokens de serviço para automação: criação com step-up, lista e revogação. O segredo aparece **uma única vez** e sai do cache do React Query logo depois |
 | **Auditoria** | Trilha de auditoria da plataforma, filtrável por mantenedor e período. Só leitura |
@@ -125,6 +126,13 @@ nem o oferece. Ordem de deploy: api → dashboard → maintenance; contra um api
 sem o 19b o catálogo não traz `digital_signature` e o quadro nem aparece; se o
 catálogo trouxer a chave mas o schema não tiver os campos (api desencontrado),
 só o quadro mostra o aviso da ordem de deploy e a aba segue.
+
+**Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
+("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
+mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
+utilizável. O catálogo de medicamentos que a receita usa é da plataforma e fica
+na tela **Medicamentos**. Ordem de deploy: api → dashboard → maintenance;
+contra um api sem o 19c, só a tela Medicamentos mostra o aviso.
 
 > **Ordem de deploy:** o `api` sobe **antes** do maintenance. Contra um api
 > sem os campos do módulo 16, a validação recusa a consulta da aba

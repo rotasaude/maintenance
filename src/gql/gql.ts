@@ -30,6 +30,9 @@ type Documents = {
     "\n  mutation SetCityFeature($citySlug: String!, $key: String!, $enabled: Boolean!) {\n    setCityFeature(citySlug: $citySlug, key: $key, enabled: $enabled) {\n      ok\n      errors { path message }\n      feature { key description enabled usable missing changedAt changedBy }\n    }\n  }\n": typeof types.SetCityFeatureDocument,
     "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": typeof types.InviteMaintainerDocument,
     "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": typeof types.DeactivateMaintainerDocument,
+    "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n": typeof types.MedicationCatalogDocument,
+    "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n": typeof types.ImportMedicationCatalogDocument,
+    "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n": typeof types.ImportAnvisaListsDocument,
     "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible revertTargetVersion\n      }\n    }\n  }\n": typeof types.CityProtocolVersionsDocument,
     "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n": typeof types.SubmitProtocolForReviewDocument,
     "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.PublishProtocolDocument,
@@ -59,6 +62,9 @@ const documents: Documents = {
     "\n  mutation SetCityFeature($citySlug: String!, $key: String!, $enabled: Boolean!) {\n    setCityFeature(citySlug: $citySlug, key: $key, enabled: $enabled) {\n      ok\n      errors { path message }\n      feature { key description enabled usable missing changedAt changedBy }\n    }\n  }\n": types.SetCityFeatureDocument,
     "\n  mutation InviteMaintainer($emailAddress: String!, $code: String!) {\n    inviteMaintainer(emailAddress: $emailAddress, code: $code) { ok errors { path message } }\n  }\n": types.InviteMaintainerDocument,
     "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n": types.DeactivateMaintainerDocument,
+    "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n": types.MedicationCatalogDocument,
+    "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n": types.ImportMedicationCatalogDocument,
+    "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n": types.ImportAnvisaListsDocument,
     "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible revertTargetVersion\n      }\n    }\n  }\n": types.CityProtocolVersionsDocument,
     "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n": types.SubmitProtocolForReviewDocument,
     "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.PublishProtocolDocument,
@@ -150,6 +156,18 @@ export function graphql(source: "\n  mutation InviteMaintainer($emailAddress: St
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"): (typeof documents)["\n  mutation DeactivateMaintainer($id: ID!) { deactivateMaintainer(id: $id) { ok errors { path message } } }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n"): (typeof documents)["\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n"): (typeof documents)["\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n"): (typeof documents)["\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

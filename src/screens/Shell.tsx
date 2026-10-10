@@ -6,14 +6,17 @@ import { CityDetail } from "./CityDetail";
 import { Maintainers } from "./Maintainers";
 import { Tokens } from "./Tokens";
 import { Audit } from "./Audit";
+import { MedicationCatalog } from "./MedicationCatalog";
 
 // Casca do mantenedor logado (Task 6): cabeçalho com e-mail e navegação,
 // corpo com a tela ativa. Mantenedores (Task 7), Tokens (Task 8) e
-// Auditoria (Task 9) já existem.
-export type Screen = "cities" | "maintainers" | "tokens" | "audit";
+// Auditoria (Task 9) já existem. Módulo 19c: Medicamentos, o catálogo da
+// plataforma (vale para todas as cidades do ambiente).
+export type Screen = "cities" | "medications" | "maintainers" | "tokens" | "audit";
 
 const NAV: { key: Screen; label: string }[] = [
   { key: "cities", label: "Cidades" },
+  { key: "medications", label: "Medicamentos" },
   { key: "maintainers", label: "Mantenedores" },
   { key: "tokens", label: "Tokens" },
   { key: "audit", label: "Auditoria" }
@@ -74,6 +77,7 @@ export function Shell() {
             ? <CityDetail slug={openCity} onBack={() => setOpenCity(null)} />
             : <Cities onOpen={(slug) => setOpenCity(slug)} />
         )}
+        {screen === "medications" && <MedicationCatalog />}
         {screen === "maintainers" && <Maintainers />}
         {screen === "tokens" && <Tokens />}
         {screen === "audit" && <Audit />}

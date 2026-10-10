@@ -434,4 +434,37 @@ describe("FeaturesTab — assinatura digital (módulo 19b)", () => {
     expect(screen.queryByRole("note", { name: "modo do PSC" })).toBeNull();
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
+
+  it("clinical_documents pelo mecanismo genérico: nome em português, falta o prontuário e liga com dois cliques", async () => {
+    const user = userEvent.setup();
+    const DOCS_OFF: Feature = {
+      key: "clinical_documents", description: "Documentos clínicos da consulta", enabled: false, usable: false,
+      missing: [ "clinical_record_disabled" ], changedAt: null, changedBy: null
+    };
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string);
+      if (body.query.includes("mutation SetCityFeature")) {
+        return Promise.resolve(reply(200, { data: { setCityFeature: {
+          ok: true, errors: [],
+          feature: { ...DOCS_OFF, enabled: true, changedAt: "2026-10-09T12:00:00Z", changedBy: "dev@local" }
+        } } }));
+      }
+      return Promise.resolve(featuresReply([ DOCS_OFF ]));
+    });
+    renderTab();
+
+    expect(await screen.findByText("clinical_documents")).not.toBeNull();
+    expect(screen.getByText("Documentos clínicos (atestado, declaração, receita, requisição)")).not.toBeNull();
+    expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar clinical_documents" }));
+
+    expect(await screen.findByText(
+      "clinical_documents ligada, mas ainda não utilizável — falta: prontuário da atenção primária (clinical_record) desligado."
+    )).not.toBeNull();
+    const sent = calls(fetchMock, "mutation SetCityFeature");
+    expect(sent).toHaveLength(1);
+    expect(bodyOf(sent[0]).variables).toEqual({ citySlug: "sp", key: "clinical_documents", enabled: true });
+  });
 });
