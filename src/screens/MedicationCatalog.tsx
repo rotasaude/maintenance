@@ -3,7 +3,7 @@
 // "Maintenance"; contrato §8). Vale para TODAS as cidades do ambiente: o api
 // traz o CATMAT (classe 6505) da API aberta do Compras.gov, compara com a
 // versão atual (entrou/mudou/saiu) e esconde da busca da receita o item que o
-// analisador não entendeu; as listas da Anvisa marcam antimicrobiano (RDC 471)
+// analisador não entendeu; as listas da Anvisa marcam antimicrobiano (IN 360/2025)
 // e controlado (Portaria 344). Uma importação por vez.
 //
 // Consulta PRÓPRIA, como o quadro de assinatura do 19b: contra um api sem o
@@ -118,7 +118,7 @@ export function MedicationCatalog() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <section aria-label={TITLE}>
-        <Panel title={TITLE} actions={<Button onClick={() => void query.refetch()} busy={query.isFetching}>atualizar</Button>}>
+        <Panel title={TITLE} actions={<Button onClick={() => { setOutcome(null); void query.refetch(); }} busy={query.isFetching}>atualizar</Button>}>
           <p style={muted}>
             A importação traz o CATMAT da API aberta do Compras.gov e diz o que entrou, mudou e saiu. Item que o analisador não
             entende fica oculto na busca da receita e aparece em "Itens para revisar". As listas da Anvisa marcam antimicrobianos

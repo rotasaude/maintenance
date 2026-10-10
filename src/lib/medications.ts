@@ -68,6 +68,6 @@ export function catalogImportText(r: CatalogImportView): string {
 
 export function anvisaImportText(r: AnvisaImportView): string {
   if (!r.ok) return importErrorText(r.errors);
-  return `Listas da Anvisa importadas: ${countText(r.antimicrobials)} antimicrobianos (RDC 471) e ` +
+  return `Listas da Anvisa importadas: ${countText(r.antimicrobials)} antimicrobianos (IN 360/2025) e ` +
     `${countText(r.controlled)} controlados (Portaria 344) marcados no catálogo.`;
 }

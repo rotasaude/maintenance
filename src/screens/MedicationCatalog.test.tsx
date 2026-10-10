@@ -140,7 +140,7 @@ describe("MedicationCatalog", () => {
     await user.click(await screen.findByRole("button", { name: "importar as listas da Anvisa" }));
     await user.click(screen.getByRole("button", { name: "confirmar: importar as listas da Anvisa agora" }));
     expect(await screen.findByText(
-      "Listas da Anvisa importadas: 118 antimicrobianos (RDC 471) e 402 controlados (Portaria 344) marcados no catálogo."
+      "Listas da Anvisa importadas: 118 antimicrobianos (IN 360/2025) e 402 controlados (Portaria 344) marcados no catálogo."
     )).not.toBeNull();
   });
 
@@ -182,5 +182,36 @@ describe("MedicationCatalog", () => {
     await user.click(screen.getByRole("button", { name: "confirmar: importar o CATMAT agora" }));
     expect(await screen.findByRole("alert")).not.toBeNull();
     await waitFor(() => expect(calls(fetchMock, "query MedicationCatalog").length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("depois de uma falha, clicar em atualizar limpa a mensagem", async () => {
+    const user = userEvent.setup();
+    route(fetchMock, {
+      "query MedicationCatalog": () => catalogReply(),
+      "mutation ImportMedicationCatalog": () => reply(504, {})
+    });
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "importar o CATMAT" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: importar o CATMAT agora" }));
+    expect(await screen.findByRole("alert")).not.toBeNull();
+    await user.click(await screen.findByRole("button", { name: "atualizar" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
+
+  it("depois de uma falha, iniciar outra importação limpa a mensagem antiga", async () => {
+    const user = userEvent.setup();
+    route(fetchMock, {
+      "query MedicationCatalog": () => catalogReply(),
+      "mutation ImportMedicationCatalog": () => reply(504, {}),
+      "mutation ImportAnvisaLists": () => new Promise<Response>(() => {})
+    });
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "importar o CATMAT" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: importar o CATMAT agora" }));
+    expect(await screen.findByRole("alert")).not.toBeNull();
+    await user.click(await screen.findByRole("button", { name: "importar as listas da Anvisa" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: importar as listas da Anvisa agora" }));
+    await screen.findByRole("status");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

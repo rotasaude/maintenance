@@ -78,7 +78,7 @@ describe("catalogImportText", () => {
 describe("anvisaImportText", () => {
   it("diz quantos foram marcados, ou o motivo da recusa", () => {
     expect(anvisaImportText({ ok: true, antimicrobials: 118, controlled: 402, errors: [] }))
-      .toBe("Listas da Anvisa importadas: 118 antimicrobianos (RDC 471) e 402 controlados (Portaria 344) marcados no catálogo.");
+      .toBe("Listas da Anvisa importadas: 118 antimicrobianos (IN 360/2025) e 402 controlados (Portaria 344) marcados no catálogo.");
     expect(anvisaImportText({ ok: false, errors: [ { message: "invalid_file" } ] }))
       .toBe("um arquivo das listas da Anvisa está inválido — nada mudou");
   });
