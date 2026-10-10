@@ -87,7 +87,11 @@ export function MedicationCatalog() {
       if (!payload) { settle(refused(fieldErrors), false); return; }
       settle(catalogImportText(payload), payload.ok);
     },
-    onError: (err) => settle(requestErrorText(err), false)
+    // Rede/timeout: o api pode ter concluído; relê a versão atual mesmo assim.
+    onError: (err) => {
+      settle(requestErrorText(err), false);
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    }
   });
 
   const anvisaImport = useMutation({
@@ -98,7 +102,11 @@ export function MedicationCatalog() {
       if (!payload) { settle(refused(fieldErrors), false); return; }
       settle(anvisaImportText(payload), payload.ok);
     },
-    onError: (err) => settle(requestErrorText(err), false)
+    // Rede/timeout: o api pode ter concluído; relê a versão atual mesmo assim.
+    onError: (err) => {
+      settle(requestErrorText(err), false);
+      void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    }
   });
 
   const running = catalogImport.isPending || anvisaImport.isPending;

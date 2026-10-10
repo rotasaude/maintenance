@@ -43,7 +43,7 @@ export function reviewNote(shown: number, hidden: number): string | null {
   return hidden > shown ? `mostrando ${countText(shown)} de ${countText(hidden)} itens ocultos` : null;
 }
 
-// Códigos propostos ao contrato (Divergência M2); o api pode mandar outros.
+// Códigos do api (Medications::CatalogImport / AnvisaImport; path catalog|lists); desconhecido aparece cru.
 const IMPORT_ERRORS: Record<string, string> = {
   source_unavailable: "o Compras.gov não respondeu — nada mudou; tente de novo mais tarde",
   incomplete_source: "o Compras.gov devolveu menos itens do que anunciou — nada mudou; tente de novo mais tarde",

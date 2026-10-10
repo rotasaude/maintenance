@@ -170,4 +170,17 @@ describe("MedicationCatalog", () => {
     expect((await screen.findByRole("alert")).textContent)
       .toMatch(/o api do módulo 19c precisa subir antes do maintenance/);
   });
+
+  it("falha de rede na importação: mostra o alerta e relê a versão atual", async () => {
+    const user = userEvent.setup();
+    route(fetchMock, {
+      "query MedicationCatalog": () => catalogReply(),
+      "mutation ImportMedicationCatalog": () => reply(504, {})
+    });
+    renderScreen();
+    await user.click(await screen.findByRole("button", { name: "importar o CATMAT" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: importar o CATMAT agora" }));
+    expect(await screen.findByRole("alert")).not.toBeNull();
+    await waitFor(() => expect(calls(fetchMock, "query MedicationCatalog").length).toBeGreaterThanOrEqual(2));
+  });
 });
