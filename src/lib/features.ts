@@ -35,6 +35,10 @@ const MISSING_LABELS: Record<string, string> = {
   clinical_record_disabled: "prontuário da atenção primária (clinical_record) desligado",
   // Módulo 19b: signature_psc_mock exige digital_signature ligada.
   digital_signature_disabled: "assinatura digital (digital_signature) desligada",
+  // Módulo 19d: controlled_prescriptions exige clinical_documents ligado;
+  // sncr_mock exige controlled_prescriptions ligado.
+  clinical_documents_disabled: "documentos clínicos (clinical_documents) desligados",
+  controlled_prescriptions_disabled: "receita de controlado (controlled_prescriptions) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -44,7 +48,9 @@ const MISSING_LABELS: Record<string, string> = {
 const FEATURE_LABELS: Record<string, string> = {
   signature_psc_mock: "PSC simulado (desenvolvimento)",
   // Módulo 19c: exige clinical_record (missing: clinical_record_disabled, já traduzido acima).
-  clinical_documents: "Documentos clínicos (atestado, declaração, receita, requisição)"
+  clinical_documents: "Documentos clínicos (atestado, declaração, receita, requisição)",
+  controlled_prescriptions: "Receita de controle especial e de antimicrobiano (SNCR)",
+  sncr_mock: "SNCR simulado (desenvolvimento)"
 };
 
 export function featureLabel(key: string): string | null {

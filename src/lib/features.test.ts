@@ -33,6 +33,12 @@ describe("missingText e missingSummary", () => {
     expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 
+  it("pré-requisitos do 19d têm frase", () => {
+    expect(missingText("clinical_documents_disabled")).toBe("documentos clínicos (clinical_documents) desligados");
+    expect(missingText("controlled_prescriptions_disabled")).toBe("receita de controlado (controlled_prescriptions) desligada");
+    expect(missingSummary([ "controlled_prescriptions_disabled" ])).toBe("receita de controlado (controlled_prescriptions) desligada");
+  });
+
   it("traduz cada pré-requisito do catálogo", () => {
     expect(missingText("record_mode_off")).toBe("modo de prontuário desligado");
     expect(missingText("pec_url_missing")).toBe("endereço do PEC não preenchido");
@@ -103,6 +109,11 @@ describe("featureLabel", () => {
     expect(featureLabel("signature_psc_mock")).toBe("PSC simulado (desenvolvimento)");
     expect(featureLabel("ledi_export")).toBeNull();
     expect(featureLabel("pscnovo")).toBeNull();
+  });
+
+  it("as chaves do 19d têm nome em português", () => {
+    expect(featureLabel("controlled_prescriptions")).toBe("Receita de controle especial e de antimicrobiano (SNCR)");
+    expect(featureLabel("sncr_mock")).toBe("SNCR simulado (desenvolvimento)");
   });
 });
 
