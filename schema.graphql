@@ -538,6 +538,11 @@ type Query {
   Estado do serviço interno de assinatura (signer)
   """
   signerStatus: SignerStatus!
+
+  """
+  SNCR do ambiente: configurado, alcançável e simulado disponível
+  """
+  sncrStatus: SncrStatus!
 }
 
 """
@@ -611,6 +616,17 @@ type SignerStatus {
   crlUpdatedAt: ISO8601DateTime
   reachable: Boolean!
   version: String
+}
+
+"""
+SNCR da Anvisa no ambiente (ADR 0034; contrato §8): credencial presente, última
+conversa real e se o SNCR simulado existe aqui. Nunca segredo, endereço ou CNPJ.
+"""
+type SncrStatus {
+  configured: Boolean!
+  lastCheckAt: ISO8601DateTime
+  reachable: Boolean!
+  simulatedAvailable: Boolean!
 }
 
 """

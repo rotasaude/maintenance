@@ -127,6 +127,23 @@ sem o 19b o catálogo não traz `digital_signature` e o quadro nem aparece; se o
 catálogo trouxer a chave mas o schema não tiver os campos (api desencontrado),
 só o quadro mostra o aviso da ordem de deploy e a aba segue.
 
+**Receita de controlado e SNCR (módulo 19d).** O interruptor
+`controlled_prescriptions` ("Receita de controle especial e de antimicrobiano
+(SNCR)") aparece na mesma lista e liga como os outros; ele precisa de
+`clinical_documents` ligado (falta: "documentos clínicos (clinical_documents)
+desligados"). Quando o catálogo da cidade traz `controlled_prescriptions`, a
+aba mostra também o quadro **SNCR da Anvisa — numeração de receitas**, só
+leitura e da plataforma: se a credencial do SNCR existe no api, se o api o
+alcançou na última checagem (e quando) e se o SNCR simulado existe neste
+ambiente. Credenciais, CNPJ da mantenedora, token e números SNCR nunca aparecem
+aqui. O interruptor `sncr_mock` ("SNCR simulado (desenvolvimento)") só existe
+fora de produção e exige `controlled_prescriptions`; ligado, a aba e o quadro
+avisam que a cidade numera com o SNCR simulado, sem validade. Em produção o api
+nem o oferece. Ordem de deploy: contracts → api → dashboard → maintenance;
+contra um api sem o 19d o catálogo não traz `controlled_prescriptions` e o
+quadro nem aparece; se o catálogo trouxer a chave mas o schema não tiver
+`sncrStatus`, só o quadro mostra o aviso da ordem de deploy e a aba segue.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

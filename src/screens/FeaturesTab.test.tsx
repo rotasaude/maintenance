@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { FeaturesTab } from "./FeaturesTab";
 import { PSC_MOCK_NOTICE, PSC_REAL_NOTICE } from "../lib/signature";
+import { SNCR_MOCK_NOTICE, SNCR_REAL_NOTICE } from "../lib/sncr";
 
 afterEach(cleanup);
 
@@ -466,5 +467,163 @@ describe("FeaturesTab — assinatura digital (módulo 19b)", () => {
     const sent = calls(fetchMock, "mutation SetCityFeature");
     expect(sent).toHaveLength(1);
     expect(bodyOf(sent[0]).variables).toEqual({ citySlug: "sp", key: "clinical_documents", enabled: true });
+  });
+});
+
+describe("FeaturesTab — receita de controlado e SNCR (módulo 19d)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const CONTROLLED_OFF: Feature = {
+    key: "controlled_prescriptions", description: "Receita de controle especial e de antimicrobiano com número SNCR",
+    enabled: false, usable: false, missing: [ "clinical_documents_disabled" ], changedAt: null, changedBy: null
+  };
+  const SNCR_MOCK_OFF: Feature = {
+    key: "sncr_mock", description: "SNCR simulado para desenvolvimento", enabled: false, usable: false,
+    missing: [ "controlled_prescriptions_disabled" ], changedAt: null, changedBy: null
+  };
+  const SNCR_MOCK_ON: Feature = { ...SNCR_MOCK_OFF, enabled: true, changedAt: "2026-10-10T13:00:00Z", changedBy: "dev@local" };
+  const sncrPlatform = () => reply(200, { data: {
+    sncrStatus: { configured: false, reachable: false, lastCheckAt: null, simulatedAvailable: true }
+  } });
+  function withCatalog(features: Feature[]) {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SncrPlatform")) return Promise.resolve(sncrPlatform());
+      return Promise.resolve(featuresReply(features));
+    });
+  }
+
+  it("controlled_prescriptions pelo mecanismo genérico: falta documentos clínicos e liga com dois cliques", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...CONTROLLED_OFF, enabled: true, changedAt: "2026-10-10T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ CONTROLLED_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SncrPlatform")) return Promise.resolve(sncrPlatform());
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    expect(await screen.findByText("controlled_prescriptions")).not.toBeNull();
+    expect(screen.getByText("Receita de controle especial e de antimicrobiano (SNCR)")).not.toBeNull();
+    expect(screen.getByText("documentos clínicos (clinical_documents) desligados")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar controlled_prescriptions" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "controlled_prescriptions", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "controlled_prescriptions ligada, mas ainda não utilizável — falta: documentos clínicos (clinical_documents) desligados."
+    );
+  });
+
+  it("com controlled_prescriptions no catálogo mostra o quadro do SNCR; sem ela, nem consulta", async () => {
+    withCatalog([ CONTROLLED_OFF ]);
+    renderTab();
+    expect(await screen.findByRole("region", { name: "SNCR da Anvisa — numeração de receitas (todas as cidades do ambiente)" }))
+      .not.toBeNull();
+    expect(await screen.findByText("sem credencial — SNCR real não configurado")).not.toBeNull();
+    cleanup();
+
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ LEDI_OFF ])));
+    renderTab();
+    await screen.findByText("ledi_export");
+    expect(calls(fetchMock, "query SncrPlatform")).toHaveLength(0);
+  });
+
+  it("api sem o 19d: o quadro explica a ordem de deploy e a aba segue", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SncrPlatform")) {
+        return Promise.resolve(reply(200, { errors: [ {
+          message: "Field 'sncrStatus' doesn't exist on type 'Query'",
+          extensions: { code: "undefinedField", typeName: "Query", fieldName: "sncrStatus" }
+        } ] }));
+      }
+      return Promise.resolve(featuresReply([ CONTROLLED_OFF ]));
+    });
+    renderTab();
+    expect((await screen.findByRole("alert")).textContent).toMatch(/o api do módulo 19d precisa subir antes do maintenance/);
+    expect(screen.getByText("controlled_prescriptions")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "ligar" })).not.toBeNull();
+  });
+
+  it("sncr_mock tem rótulo e diz o pré-requisito", async () => {
+    withCatalog([ CONTROLLED_OFF, SNCR_MOCK_OFF ]);
+    renderTab();
+    expect(await screen.findByText("sncr_mock")).not.toBeNull();
+    expect(screen.getByText("SNCR simulado (desenvolvimento)")).not.toBeNull();
+    expect(screen.getByText("receita de controlado (controlled_prescriptions) desligada")).not.toBeNull();
+  });
+
+  it("SNCR simulado ligado: aviso na aba e no quadro", async () => {
+    withCatalog([ CONTROLLED_OFF, SNCR_MOCK_ON ]);
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do SNCR" })).textContent).toBe(SNCR_MOCK_NOTICE);
+    expect(screen.getByRole("note", { name: "modo do SNCR desta cidade" }).textContent).toBe(SNCR_MOCK_NOTICE);
+  });
+
+  it("ligar sncr_mock por dois cliques: após o refetch a aba avisa", async () => {
+    const user = userEvent.setup();
+    let listed = [ CONTROLLED_OFF, SNCR_MOCK_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SncrPlatform")) return Promise.resolve(sncrPlatform());
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ CONTROLLED_OFF, SNCR_MOCK_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: SNCR_MOCK_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("sncr_mock")).not.toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do SNCR" })).toBeNull();
+    // Duas linhas desligadas (controlled_prescriptions, sncr_mock): a do SNCR simulado é a segunda.
+    await user.click(screen.getAllByRole("button", { name: "ligar" })[1]);
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar sncr_mock" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "sncr_mock", enabled: true });
+    expect((await screen.findByRole("note", { name: "modo do SNCR" })).textContent).toBe(SNCR_MOCK_NOTICE);
+  });
+
+  it("SNCR simulado desligado: sem aviso na aba; o quadro diz SNCR real", async () => {
+    withCatalog([ CONTROLLED_OFF, SNCR_MOCK_OFF ]);
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do SNCR desta cidade" })).textContent).toBe(SNCR_REAL_NOTICE);
+    expect(screen.queryByRole("note", { name: "modo do SNCR" })).toBeNull();
+  });
+
+  it("catálogo sem sncr_mock (produção): nada quebra e nada diz simulado", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query SncrPlatform")) {
+        return Promise.resolve(reply(200, { data: {
+          sncrStatus: { configured: true, reachable: true, lastCheckAt: "2026-10-10T12:00:00Z", simulatedAvailable: false }
+        } }));
+      }
+      return Promise.resolve(featuresReply([ { ...CONTROLLED_OFF, enabled: true, usable: true, missing: [] } ]));
+    });
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do SNCR desta cidade" })).textContent).toBe(SNCR_REAL_NOTICE);
+    await screen.findByText("SNCR simulado indisponível neste ambiente (produção)");
+    expect(screen.queryByText("sncr_mock")).toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do SNCR" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });

@@ -16,6 +16,8 @@ import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { SignaturePlatformPanel } from "./SignaturePlatformPanel";
 import { PSC_MOCK_NOTICE, pscModeNotice } from "../lib/signature";
+import { SncrPlatformPanel } from "./SncrPlatformPanel";
+import { CONTROLLED_KEY, SNCR_MOCK_NOTICE, sncrModeNotice } from "../lib/sncr";
 
 // Aba Funcionalidades (módulo 16, F-16.1; ADR 0028; contratos §3): os
 // interruptores da cidade e o liga/desliga. Só o maintenance escreve
@@ -122,6 +124,7 @@ export function FeaturesTab({ slug }: { slug: string }) {
     : undefined;
   const profileErr = query.data ? fieldError(query.data.fieldErrors, "profile") : undefined;
   const pscSimulated = city ? pscModeNotice(city.features).simulated : false;
+  const sncrSimulated = city ? sncrModeNotice(city.features).simulated : false;
   const ibge = profileErr ? `indisponível (${profileErr.code})` : ibgeCodeText(city?.profile?.ibgeCode);
 
   return (
@@ -150,6 +153,11 @@ export function FeaturesTab({ slug }: { slug: string }) {
             {pscSimulated && (
               <p role="note" aria-label="modo do PSC" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
                 {PSC_MOCK_NOTICE}
+              </p>
+            )}
+            {sncrSimulated && (
+              <p role="note" aria-label="modo do SNCR" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
+                {SNCR_MOCK_NOTICE}
               </p>
             )}
             {done && <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{done}</p>}
@@ -204,6 +212,10 @@ export function FeaturesTab({ slug }: { slug: string }) {
           {/* Módulo 19b: prestadores e signer (plataforma), só onde se decide
               ligar a assinatura digital. Consulta própria (SignaturePlatformPanel). */}
           {city.features.some((f) => f.key === "digital_signature") && <SignaturePlatformPanel pscMock={pscSimulated} />}
+
+          {/* Módulo 19d: SNCR da Anvisa (plataforma), só onde se decide ligar a
+              receita de controlado. Consulta própria (SncrPlatformPanel). */}
+          {city.features.some((f) => f.key === CONTROLLED_KEY) && <SncrPlatformPanel sncrMock={sncrSimulated} />}
         </>
       )}
     </div>
