@@ -221,7 +221,7 @@ export function FeaturesTab({ slug }: { slug: string }) {
 
           {/* Módulo 20: origem e chave HMAC da página do PEC (por cidade), só
               onde se decide ligar pec_external_view. Consulta própria (PecConfigPanel). */}
-          {city.features.some((f) => f.key === PEC_EXTERNAL_KEY) && <PecConfigPanel slug={slug} />}
+          {city.features.some((f) => f.key === PEC_EXTERNAL_KEY) && <PecConfigPanel key={slug} slug={slug} />}
         </>
       )}
     </div>
