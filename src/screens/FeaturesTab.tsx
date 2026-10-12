@@ -18,6 +18,8 @@ import { SignaturePlatformPanel } from "./SignaturePlatformPanel";
 import { PSC_MOCK_NOTICE, pscModeNotice } from "../lib/signature";
 import { SncrPlatformPanel } from "./SncrPlatformPanel";
 import { CONTROLLED_KEY, SNCR_MOCK_NOTICE, sncrModeNotice } from "../lib/sncr";
+import { PecConfigPanel } from "./PecConfigPanel";
+import { PEC_EXTERNAL_KEY } from "../lib/pec";
 
 // Aba Funcionalidades (módulo 16, F-16.1; ADR 0028; contratos §3): os
 // interruptores da cidade e o liga/desliga. Só o maintenance escreve
@@ -216,6 +218,10 @@ export function FeaturesTab({ slug }: { slug: string }) {
           {/* Módulo 19d: SNCR da Anvisa (plataforma), só onde se decide ligar a
               receita de controlado. Consulta própria (SncrPlatformPanel). */}
           {city.features.some((f) => f.key === CONTROLLED_KEY) && <SncrPlatformPanel sncrMock={sncrSimulated} />}
+
+          {/* Módulo 20: origem e chave HMAC da página do PEC (por cidade), só
+              onde se decide ligar pec_external_view. Consulta própria (PecConfigPanel). */}
+          {city.features.some((f) => f.key === PEC_EXTERNAL_KEY) && <PecConfigPanel slug={slug} />}
         </>
       )}
     </div>

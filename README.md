@@ -144,6 +144,23 @@ contra um api sem o 19d o catálogo não traz `controlled_prescriptions` e o
 quadro nem aparece; se o catálogo trouxer a chave mas o schema não tiver
 `sncrStatus`, só o quadro mostra o aviso da ordem de deploy e a aba segue.
 
+**Linha do tempo e página do PEC (módulo 20).** Os interruptores
+`patient_timeline` ("Linha do tempo do paciente", sem pré-requisito) e
+`pec_external_view` ("Página para os sistemas externos do PEC", exige
+`patient_timeline` ligado, o modo `integrated`, a origem do PEC e a chave HMAC
+gravadas) aparecem na mesma lista e ligam como os outros. Quando o catálogo da
+cidade traz `pec_external_view`, a aba mostra o quadro **Página do PEC
+(sistemas externos)**: a origem do PEC (`https://pec.cidade.gov.br`, sem
+caminho — vai no `frame-ancestors` da página; não é o endereço do LEDI, que é
+do operador no console admin; campo vazio apaga) e a chave de assinatura HMAC
+que o próprio PEC gera. A chave só se grava ou troca, com o código do
+autenticador do momento e confirmação de dois cliques; ela nunca volta do api
+nem aparece aqui, e os campos da chave e do código ficam vazios depois. Trocar
+a chave faz a página recusar as aberturas até o PEC ter a chave nova. Ordem de
+deploy: api → dashboard e wpda → maintenance; contra um api sem o módulo 20 o
+quadro nem aparece, e se o catálogo trouxer a chave mas o schema não tiver
+`cityPecConfig`, só o quadro mostra o aviso da ordem de deploy.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

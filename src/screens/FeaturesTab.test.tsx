@@ -627,3 +627,118 @@ describe("FeaturesTab — receita de controlado e SNCR (módulo 19d)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — linha do tempo e página do PEC (módulo 20)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const TIMELINE_OFF: Feature = {
+    key: "patient_timeline", description: "Linha do tempo do paciente (profissional e cidadão)",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  // M3 aceita: sem origem ou sem chave, o catálogo também diz o que falta.
+  const PEC_OFF: Feature = {
+    key: "pec_external_view", description: "Página para a tela de sistemas externos do e-SUS PEC",
+    enabled: false, usable: false,
+    missing: [ "patient_timeline_disabled", "record_mode_not_integrated", "pec_origin_missing", "pec_hmac_key_missing" ],
+    changedAt: null, changedBy: null
+  };
+  const PEC_MISSING_TEXT =
+    "linha do tempo (patient_timeline) desligada; modo de prontuário diferente de integrated; " +
+    "endereço de origem do PEC não preenchido; chave HMAC do PEC não gravada";
+  const pecConfig = () => reply(200, { data: {
+    cityPecConfig: { pecOrigin: null, hmacKeyConfigured: false, hmacKeyUpdatedAt: null }
+  } });
+
+  it("patient_timeline tem rótulo e liga com dois cliques, sem pré-requisito", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...TIMELINE_OFF, enabled: true, usable: true, changedAt: "2026-10-11T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ TIMELINE_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+    expect(await screen.findByText("patient_timeline")).not.toBeNull();
+    expect(screen.getByText("Linha do tempo do paciente")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar patient_timeline" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "patient_timeline", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe("patient_timeline ligada e utilizável.");
+    expect(calls(fetchMock, "query CityPecConfig")).toHaveLength(0);
+  });
+
+  it("pec_external_view pelo mecanismo genérico: falta linha do tempo, modo integrado, origem e chave", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...PEC_OFF, enabled: true, changedAt: "2026-10-11T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ PEC_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityPecConfig")) return Promise.resolve(pecConfig());
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+    expect(await screen.findByText("pec_external_view")).not.toBeNull();
+    expect(screen.getByText("Página para os sistemas externos do PEC")).not.toBeNull();
+    expect(screen.getByText(PEC_MISSING_TEXT)).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar pec_external_view" }));
+    expect((await screen.findByRole("status")).textContent).toBe(
+      `pec_external_view ligada, mas ainda não utilizável — falta: ${PEC_MISSING_TEXT}.`
+    );
+  });
+
+  it("com pec_external_view no catálogo mostra o quadro do PEC; sem ela, nem consulta", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityPecConfig")) return Promise.resolve(pecConfig());
+      return Promise.resolve(featuresReply([ TIMELINE_OFF, PEC_OFF ]));
+    });
+    renderTab();
+    expect(await screen.findByRole("region", { name: "Página do PEC (sistemas externos)" })).not.toBeNull();
+    expect(await screen.findByText("chave não gravada — o PEC não consegue abrir a página")).not.toBeNull();
+    expect(bodyOf(calls(fetchMock, "query CityPecConfig")[0]).variables).toEqual({ slug: "sp" });
+    cleanup();
+
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ LEDI_OFF ])));
+    renderTab();
+    await screen.findByText("ledi_export");
+    expect(calls(fetchMock, "query CityPecConfig")).toHaveLength(0);
+    expect(screen.queryByRole("region", { name: "Página do PEC (sistemas externos)" })).toBeNull();
+  });
+
+  it("api sem o módulo 20: o quadro explica a ordem de deploy e a aba segue", async () => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityPecConfig")) {
+        return Promise.resolve(reply(200, { errors: [ {
+          message: "Field 'cityPecConfig' doesn't exist on type 'Query'",
+          extensions: { code: "undefinedField", typeName: "Query", fieldName: "cityPecConfig" }
+        } ] }));
+      }
+      return Promise.resolve(featuresReply([ PEC_OFF ]));
+    });
+    renderTab();
+    expect((await screen.findByRole("alert")).textContent).toMatch(/o api do módulo 20 precisa subir antes do maintenance/);
+    expect(screen.getByText("pec_external_view")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "ligar" })).not.toBeNull();
+  });
+});

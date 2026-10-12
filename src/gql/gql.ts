@@ -33,6 +33,9 @@ type Documents = {
     "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n": typeof types.MedicationCatalogDocument,
     "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n": typeof types.ImportMedicationCatalogDocument,
     "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n": typeof types.ImportAnvisaListsDocument,
+    "\n  query CityPecConfig($slug: String!) {\n    cityPecConfig(citySlug: $slug) { pecOrigin hmacKeyConfigured hmacKeyUpdatedAt }\n  }\n": typeof types.CityPecConfigDocument,
+    "\n  mutation SetCityPecOrigin($citySlug: String!, $pecOrigin: String) {\n    setCityPecOrigin(citySlug: $citySlug, pecOrigin: $pecOrigin) { ok errors { path message } }\n  }\n": typeof types.SetCityPecOriginDocument,
+    "\n  mutation RotateCityPecHmacKey($citySlug: String!, $key: String!, $code: String!) {\n    rotateCityPecHmacKey(citySlug: $citySlug, key: $key, code: $code) { ok errors { path message } }\n  }\n": typeof types.RotateCityPecHmacKeyDocument,
     "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible revertTargetVersion\n      }\n    }\n  }\n": typeof types.CityProtocolVersionsDocument,
     "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n": typeof types.SubmitProtocolForReviewDocument,
     "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": typeof types.PublishProtocolDocument,
@@ -66,6 +69,9 @@ const documents: Documents = {
     "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n": types.MedicationCatalogDocument,
     "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n": types.ImportMedicationCatalogDocument,
     "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n": types.ImportAnvisaListsDocument,
+    "\n  query CityPecConfig($slug: String!) {\n    cityPecConfig(citySlug: $slug) { pecOrigin hmacKeyConfigured hmacKeyUpdatedAt }\n  }\n": types.CityPecConfigDocument,
+    "\n  mutation SetCityPecOrigin($citySlug: String!, $pecOrigin: String) {\n    setCityPecOrigin(citySlug: $citySlug, pecOrigin: $pecOrigin) { ok errors { path message } }\n  }\n": types.SetCityPecOriginDocument,
+    "\n  mutation RotateCityPecHmacKey($citySlug: String!, $key: String!, $code: String!) {\n    rotateCityPecHmacKey(citySlug: $citySlug, key: $key, code: $code) { ok errors { path message } }\n  }\n": types.RotateCityPecHmacKeyDocument,
     "\n  query CityProtocolVersions($slug: String!) {\n    city(slug: $slug) {\n      slug\n      protocolVersions {\n        name version status\n        publicationSignatures publicationMissing\n        activationSignatures activationMissing\n        eligibleReviewers revertible revertTargetVersion\n      }\n    }\n  }\n": types.CityProtocolVersionsDocument,
     "\n  mutation SubmitProtocolForReview($citySlug: String!, $name: String!, $version: Int!) {\n    submitProtocolForReview(citySlug: $citySlug, name: $name, version: $version) { ok errors { path message } }\n  }\n": types.SubmitProtocolForReviewDocument,
     "\n  mutation PublishProtocol($citySlug: String!, $name: String!, $version: Int!, $code: String!) {\n    publishProtocol(citySlug: $citySlug, name: $name, version: $version, code: $code) { ok errors { path message } }\n  }\n": types.PublishProtocolDocument,
@@ -170,6 +176,18 @@ export function graphql(source: "\n  mutation ImportMedicationCatalog {\n    imp
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n"): (typeof documents)["\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CityPecConfig($slug: String!) {\n    cityPecConfig(citySlug: $slug) { pecOrigin hmacKeyConfigured hmacKeyUpdatedAt }\n  }\n"): (typeof documents)["\n  query CityPecConfig($slug: String!) {\n    cityPecConfig(citySlug: $slug) { pecOrigin hmacKeyConfigured hmacKeyUpdatedAt }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetCityPecOrigin($citySlug: String!, $pecOrigin: String) {\n    setCityPecOrigin(citySlug: $citySlug, pecOrigin: $pecOrigin) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation SetCityPecOrigin($citySlug: String!, $pecOrigin: String) {\n    setCityPecOrigin(citySlug: $citySlug, pecOrigin: $pecOrigin) { ok errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RotateCityPecHmacKey($citySlug: String!, $key: String!, $code: String!) {\n    rotateCityPecHmacKey(citySlug: $citySlug, key: $key, code: $code) { ok errors { path message } }\n  }\n"): (typeof documents)["\n  mutation RotateCityPecHmacKey($citySlug: String!, $key: String!, $code: String!) {\n    rotateCityPecHmacKey(citySlug: $citySlug, key: $key, code: $code) { ok errors { path message } }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
