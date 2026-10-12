@@ -331,4 +331,113 @@ describe("PecConfigPanel", () => {
     await user.click(screen.getByRole("button", { name: "atualizar" }));
     await waitFor(() => expect(calls(fetchMock, "query CityPecConfig")).toHaveLength(2));
   });
+  describe("coerência com o quadro de interruptores", () => {
+    const KEYS = [ [ "city", "curitiba", "pec" ], [ "city", "curitiba", "features" ] ];
+    const invalidatedKeys = (spy: { mock: { calls: unknown[][] } }) =>
+      spy.mock.calls.map((c) => (c[0] as { queryKey: unknown[] }).queryKey);
+
+    it("salvar a origem (ok) invalida o quadro do PEC e a lista de interruptores", async () => {
+      const user = userEvent.setup();
+      const { client } = renderPanel();
+      await screen.findByRole("group", { name: "configuração do PEC" });
+      const spy = vi.spyOn(client, "invalidateQueries");
+      await user.click(screen.getByRole("button", { name: "salvar endereço" }));
+      await screen.findByRole("status");
+      expect(invalidatedKeys(spy)).toEqual(expect.arrayContaining(KEYS));
+    });
+
+    it("gravar a chave (ok) invalida o quadro do PEC e a lista de interruptores", async () => {
+      const user = userEvent.setup();
+      const { client } = renderPanel();
+      await screen.findByRole("group", { name: "configuração do PEC" });
+      const spy = vi.spyOn(client, "invalidateQueries");
+      await fillKeyAndCode(user);
+      await user.click(screen.getByRole("button", { name: "trocar a chave" }));
+      await user.click(screen.getByRole("button", { name: "confirmar: trocar a chave HMAC" }));
+      await screen.findByRole("status");
+      expect(invalidatedKeys(spy)).toEqual(expect.arrayContaining(KEYS));
+    });
+
+    it("payload nulo (resultado desconhecido) na origem: o erro aparece e as duas leituras são invalidadas", async () => {
+      const user = userEvent.setup();
+      fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation SetCityPecOrigin")) {
+          return Promise.resolve(reply(200, {
+            data: { setCityPecOrigin: null },
+            errors: [ { message: "city database unreachable", path: [ "setCityPecOrigin" ], extensions: { code: "CITY_UNREACHABLE" } } ]
+          }));
+        }
+        return Promise.resolve(reply(200, { data: { cityPecConfig: CONFIGURED } }));
+      });
+      const { client } = renderPanel();
+      await screen.findByRole("group", { name: "configuração do PEC" });
+      const spy = vi.spyOn(client, "invalidateQueries");
+      await user.click(screen.getByRole("button", { name: "salvar endereço" }));
+      expect((await screen.findByRole("alert")).textContent).toBe("CITY_UNREACHABLE — city database unreachable");
+      expect(invalidatedKeys(spy)).toEqual(expect.arrayContaining(KEYS));
+    });
+
+    it("payload nulo (resultado desconhecido) na chave: o erro aparece e as duas leituras são invalidadas", async () => {
+      const user = userEvent.setup();
+      fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation RotateCityPecHmacKey")) {
+          return Promise.resolve(reply(200, {
+            data: { rotateCityPecHmacKey: null },
+            errors: [ { message: "city database unreachable", path: [ "rotateCityPecHmacKey" ], extensions: { code: "CITY_UNREACHABLE" } } ]
+          }));
+        }
+        return Promise.resolve(reply(200, { data: { cityPecConfig: CONFIGURED } }));
+      });
+      const { client } = renderPanel();
+      await screen.findByRole("group", { name: "configuração do PEC" });
+      const spy = vi.spyOn(client, "invalidateQueries");
+      await fillKeyAndCode(user);
+      await user.click(screen.getByRole("button", { name: "trocar a chave" }));
+      await user.click(screen.getByRole("button", { name: "confirmar: trocar a chave HMAC" }));
+      expect((await screen.findByRole("alert")).textContent).toBe("CITY_UNREACHABLE — city database unreachable");
+      expect(invalidatedKeys(spy)).toEqual(expect.arrayContaining(KEYS));
+    });
+
+    it("recusa com ok:false NÃO invalida (nada mudou)", async () => {
+      const user = userEvent.setup();
+      fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation SetCityPecOrigin")) {
+          return Promise.resolve(reply(200, { data: { setCityPecOrigin: { ok: false, errors: [ { path: "pecOrigin", message: "invalid" } ] } } }));
+        }
+        return Promise.resolve(reply(200, { data: { cityPecConfig: CONFIGURED } }));
+      });
+      const { client } = renderPanel();
+      await screen.findByRole("group", { name: "configuração do PEC" });
+      const spy = vi.spyOn(client, "invalidateQueries");
+      await user.click(screen.getByRole("button", { name: "salvar endereço" }));
+      await screen.findByRole("alert");
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("depois de salvar, o campo mostra a origem enviada (normalizada) mesmo antes do refetch terminar", async () => {
+      const user = userEvent.setup();
+      let saved = false;
+      fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+        const body = bodyOf([ url, init ]);
+        if (body.query.includes("mutation SetCityPecOrigin")) {
+          saved = true;
+          return Promise.resolve(reply(200, { data: { setCityPecOrigin: { ok: true, errors: [] } } }));
+        }
+        // Refetch que nunca volta: o cache segue com a origem velha.
+        if (saved) return new Promise(() => {});
+        return Promise.resolve(reply(200, { data: { cityPecConfig: CONFIGURED } }));
+      });
+      renderPanel();
+      await screen.findByRole("group", { name: "configuração do PEC" });
+      const field = screen.getByLabelText("Endereço de origem do PEC") as HTMLInputElement;
+      await user.clear(field);
+      await user.type(field, "  https://pec2.curitiba.pr.gov.br/  ");
+      await user.click(screen.getByRole("button", { name: "salvar endereço" }));
+      await screen.findByRole("status");
+      expect(field.value).toBe("https://pec2.curitiba.pr.gov.br");
+    });
+  });
 });

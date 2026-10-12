@@ -741,4 +741,55 @@ describe("FeaturesTab — linha do tempo e página do PEC (módulo 20)", () => {
     expect(screen.getByText("pec_external_view")).not.toBeNull();
     expect(screen.getByRole("button", { name: "ligar" })).not.toBeNull();
   });
+
+  it("gravar a chave relê a lista: o 'falta' de pec_external_view acompanha o quadro", async () => {
+    const user = userEvent.setup();
+    const before: Feature = { ...PEC_OFF, enabled: true, missing: [ "pec_hmac_key_missing" ] };
+    const after: Feature = { ...before, missing: [] };
+    let keyWritten = false;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation RotateCityPecHmacKey")) {
+        keyWritten = true;
+        return Promise.resolve(reply(200, { data: { rotateCityPecHmacKey: { ok: true, errors: [] } } }));
+      }
+      if (body.query.includes("query CityPecConfig")) {
+        return Promise.resolve(reply(200, { data: { cityPecConfig: {
+          pecOrigin: "https://pec.sp.gov.br", hmacKeyConfigured: keyWritten, hmacKeyUpdatedAt: keyWritten ? "2026-10-11T13:00:00Z" : null
+        } } }));
+      }
+      return Promise.resolve(featuresReply([ keyWritten ? after : before ]));
+    });
+    renderTab();
+    expect(await screen.findByText("chave HMAC do PEC não gravada")).not.toBeNull();
+    await user.type(await screen.findByLabelText("Chave de assinatura do PEC"), "9f2c4e7a1b3d5f60a8c2e4f6b1d3a5c7");
+    await user.type(screen.getByLabelText("Código do autenticador"), "123456");
+    await user.click(screen.getByRole("button", { name: "gravar a chave" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: gravar a chave HMAC" }));
+    await waitFor(() => expect(calls(fetchMock, "query CityFeatures")).toHaveLength(2));
+    await waitFor(() => expect(screen.queryByText("chave HMAC do PEC não gravada")).toBeNull());
+  });
+
+  it("trocar de cidade remonta o quadro do PEC: o texto digitado de uma cidade não vai para a outra", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityPecConfig")) return Promise.resolve(pecConfig());
+      return Promise.resolve(featuresReply([ PEC_OFF ]));
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // Cache já quente da outra cidade: a aba não passa por "carregando" e só a key remonta o quadro.
+    client.setQueryData([ "city", "rio", "features" ], {
+      data: { city: { slug: "rio", recordMode: "integrated", profile: { ibgeCode: "3304557" }, features: [ PEC_OFF ] } },
+      fieldErrors: []
+    });
+    const tree = (slug: string) => <QueryClientProvider client={client}><FeaturesTab slug={slug} /></QueryClientProvider>;
+    const { rerender } = render(tree("sp"));
+    const field = (await screen.findByLabelText("Endereço de origem do PEC")) as HTMLInputElement;
+    await user.type(field, "https://rascunho.sp.gov.br");
+    expect(field.value).toBe("https://rascunho.sp.gov.br");
+    rerender(tree("rio"));
+    await waitFor(() => expect(calls(fetchMock, "query CityPecConfig").some((c) => bodyOf(c).variables.slug === "rio")).toBe(true));
+    expect((await screen.findByLabelText("Endereço de origem do PEC") as HTMLInputElement).value).toBe("");
+  });
 });

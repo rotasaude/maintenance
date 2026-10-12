@@ -81,6 +81,8 @@ function payloadFailure(payload: Payload, fieldErrors: GraphQLRefusal[]): string
 export function PecConfigPanel({ slug }: { slug: string }) {
   const queryClient = useQueryClient();
   const queryKey = [ "city", slug, "pec" ];
+  // O `missing` de pec_external_view (origem/chave) vive na lista de interruptores.
+  const featuresKey = [ "city", slug, "features" ];
   const query = useQuery({ queryKey, queryFn: () => gql(CityPecConfigQuery, { slug }), staleTime: Infinity });
   const config = query.data?.data?.cityPecConfig ?? null;
   const fieldError = query.data?.fieldErrors[0];
@@ -106,6 +108,12 @@ export function PecConfigPanel({ slug }: { slug: string }) {
     setDone(null); setFailure(null); setCodeError(null);
   }
 
+  // Escrita que talvez tenha valido: relê o quadro do PEC e a lista de interruptores.
+  function refreshAfterWrite() {
+    void queryClient.invalidateQueries({ queryKey: featuresKey });
+    return queryClient.invalidateQueries({ queryKey });
+  }
+
   async function saveOrigin() {
     resetMessages();
     // Campo vazio apaga (null); preenchido, vai a origem normalizada, nunca o texto cru.
@@ -116,10 +124,16 @@ export function PecConfigPanel({ slug }: { slug: string }) {
     try {
       const { data, fieldErrors } = await gql(SetCityPecOriginMutation, { citySlug: slug, pecOrigin: origin });
       const fail = payloadFailure(data?.setCityPecOrigin, fieldErrors);
-      if (fail) { setFailure(fail); return; }
-      setOriginTouched(false);
+      if (fail) {
+        // Payload nulo = resultado desconhecido (pode ter comitado): relê. ok:false = nada mudou.
+        if (data?.setCityPecOrigin == null) void refreshAfterWrite();
+        setFailure(fail);
+        return;
+      }
+      // O campo fica com a origem enviada até o refetch chegar; só então volta a seguir o gravado.
+      setOriginText(origin ?? "");
       setDone(cleared ? "Endereço de origem do PEC apagado." : "Endereço de origem do PEC salvo.");
-      void queryClient.invalidateQueries({ queryKey });
+      void refreshAfterWrite().then(() => setOriginTouched(false));
     } catch (err) {
       setFailure(err instanceof Error ? err.message : "erro inesperado");
     } finally {
@@ -136,7 +150,7 @@ export function PecConfigPanel({ slug }: { slug: string }) {
     try {
       const { data, fieldErrors } = await gql(RotateCityPecHmacKeyMutation, { citySlug: slug, key, code: stepUpCode });
       const payload = data?.rotateCityPecHmacKey;
-      if (payload == null) { setFailure(envelopeFailure(fieldErrors)); return; }
+      if (payload == null) { void refreshAfterWrite(); setFailure(envelopeFailure(fieldErrors)); return; }
       if (!payload.ok) {
         // Recusa do step-up (código inválido, conta bloqueada) fica no campo
         // do código, com o aviso de bloqueio; o resto, no quadro.
@@ -148,7 +162,7 @@ export function PecConfigPanel({ slug }: { slug: string }) {
       }
       setKeyText("");
       setDone("Chave gravada. Configure a mesma chave no PEC da cidade, se ainda não estiver lá.");
-      void queryClient.invalidateQueries({ queryKey });
+      void refreshAfterWrite();
     } catch (err) {
       setFailure(err instanceof Error ? err.message : "erro inesperado");
     } finally {
