@@ -39,6 +39,12 @@ const MISSING_LABELS: Record<string, string> = {
   // sncr_mock exige controlled_prescriptions ligado.
   clinical_documents_disabled: "documentos clínicos (clinical_documents) desligados",
   controlled_prescriptions_disabled: "receita de controlado (controlled_prescriptions) desligada",
+  // Módulo 20: pec_external_view exige patient_timeline ligado e o modo
+  // integrated; com a Divergência M3, também a origem e a chave do PEC.
+  patient_timeline_disabled: "linha do tempo (patient_timeline) desligada",
+  record_mode_not_integrated: "modo de prontuário diferente de integrated",
+  pec_origin_missing: "endereço de origem do PEC não preenchido",
+  pec_hmac_key_missing: "chave HMAC do PEC não gravada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -50,7 +56,9 @@ const FEATURE_LABELS: Record<string, string> = {
   // Módulo 19c: exige clinical_record (missing: clinical_record_disabled, já traduzido acima).
   clinical_documents: "Documentos clínicos (atestado, declaração, receita, requisição)",
   controlled_prescriptions: "Receita de controle especial e de antimicrobiano (SNCR)",
-  sncr_mock: "SNCR simulado (desenvolvimento)"
+  sncr_mock: "SNCR simulado (desenvolvimento)",
+  patient_timeline: "Linha do tempo do paciente",
+  pec_external_view: "Página para os sistemas externos do PEC"
 };
 
 export function featureLabel(key: string): string | null {

@@ -39,6 +39,15 @@ describe("missingText e missingSummary", () => {
     expect(missingSummary([ "controlled_prescriptions_disabled" ])).toBe("receita de controlado (controlled_prescriptions) desligada");
   });
 
+  it("pré-requisitos do módulo 20 têm frase", () => {
+    expect(missingText("patient_timeline_disabled")).toBe("linha do tempo (patient_timeline) desligada");
+    expect(missingText("record_mode_not_integrated")).toBe("modo de prontuário diferente de integrated");
+    expect(missingText("pec_origin_missing")).toBe("endereço de origem do PEC não preenchido");
+    expect(missingText("pec_hmac_key_missing")).toBe("chave HMAC do PEC não gravada");
+    expect(missingSummary([ "patient_timeline_disabled", "record_mode_not_integrated" ]))
+      .toBe("linha do tempo (patient_timeline) desligada; modo de prontuário diferente de integrated");
+  });
+
   it("traduz cada pré-requisito do catálogo", () => {
     expect(missingText("record_mode_off")).toBe("modo de prontuário desligado");
     expect(missingText("pec_url_missing")).toBe("endereço do PEC não preenchido");
@@ -114,6 +123,11 @@ describe("featureLabel", () => {
   it("as chaves do 19d têm nome em português", () => {
     expect(featureLabel("controlled_prescriptions")).toBe("Receita de controle especial e de antimicrobiano (SNCR)");
     expect(featureLabel("sncr_mock")).toBe("SNCR simulado (desenvolvimento)");
+  });
+
+  it("as chaves do módulo 20 têm nome em português", () => {
+    expect(featureLabel("patient_timeline")).toBe("Linha do tempo do paciente");
+    expect(featureLabel("pec_external_view")).toBe("Página para os sistemas externos do PEC");
   });
 });
 
