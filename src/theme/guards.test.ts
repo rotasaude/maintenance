@@ -23,3 +23,10 @@ describe("guardas do maintenance", () => {
   it("nenhum outline zerado", () => expect(offenders(/outline:\s*"none"/)).toEqual([]));
   it("desabilitado não depende de opacidade", () => expect(offenders(/opacity:\s*[^,}]*(disabled|busy)/)).toEqual([]));
 });
+
+describe("tabelas do maintenance", () => {
+  it("a tabela da Auditoria fica dentro de TableScroll", () => {
+    const code = readFileSync(join(src, "screens/Audit.tsx"), "utf8");
+    expect(code).toMatch(/<TableScroll>\s*<table/);
+  });
+});

@@ -4,6 +4,7 @@ import { gql } from "../lib/api";
 import { graphql } from "../gql";
 import { ErrorState } from "../components/ErrorState";
 import { EmptyState } from "../components/EmptyState";
+import { TableScroll } from "../components/TableScroll";
 
 // Auditoria (Task 9): só leitura — nenhum botão de ação, nenhuma mutation.
 // A consulta de mantenedores é a mesma usada pela tela de Mantenedores (Task
@@ -182,34 +183,36 @@ export function Audit() {
 
       {query.isSuccess && (
         events.length === 0 ? <EmptyState message="nenhum evento" /> : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th style={headStyle}>Quando</th>
-                <th style={headStyle}>Evento</th>
-                <th style={headStyle}>Módulo</th>
-                <th style={headStyle}>Resultado</th>
-                <th style={headStyle}>Quem</th>
-                <th style={headStyle}>Correlação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event, index) => (
-                <tr
-                  key={`${event.groupId}-${index}`}
-                  data-correlation-id={event.correlationId ?? undefined}
-                  style={{ background: event.groupIndex % 2 === 0 ? "transparent" : "var(--sunken)" }}
-                >
-                  <td style={cellStyle}>{event.occurredAt}</td>
-                  <td style={cellStyle}>{event.name}</td>
-                  <td style={cellStyle}>{event.module}</td>
-                  <td style={cellStyle}>{OUTCOME_LABELS[event.outcome] ?? event.outcome}</td>
-                  <td style={cellStyle}>{event.login ?? "—"}</td>
-                  <td style={cellStyle}>{event.correlationId ?? "—"}</td>
+          <TableScroll>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={headStyle}>Quando</th>
+                  <th style={headStyle}>Evento</th>
+                  <th style={headStyle}>Módulo</th>
+                  <th style={headStyle}>Resultado</th>
+                  <th style={headStyle}>Quem</th>
+                  <th style={headStyle}>Correlação</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {events.map((event, index) => (
+                  <tr
+                    key={`${event.groupId}-${index}`}
+                    data-correlation-id={event.correlationId ?? undefined}
+                    style={{ background: event.groupIndex % 2 === 0 ? "transparent" : "var(--sunken)" }}
+                  >
+                    <td style={cellStyle}>{event.occurredAt}</td>
+                    <td style={cellStyle}>{event.name}</td>
+                    <td style={cellStyle}>{event.module}</td>
+                    <td style={cellStyle}>{OUTCOME_LABELS[event.outcome] ?? event.outcome}</td>
+                    <td style={cellStyle}>{event.login ?? "—"}</td>
+                    <td style={cellStyle}>{event.correlationId ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableScroll>
         )
       )}
     </div>
