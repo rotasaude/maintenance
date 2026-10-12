@@ -17,13 +17,14 @@ export function Button({ children, type = "button", disabled, busy, onClick }: P
       data-busy={busy || undefined}
       style={{
         padding: "9px 16px",
-        border: "1px solid var(--accent)",
         borderRadius: 6,
-        background: "var(--accent)",
-        color: "white",
         fontSize: 13,
         fontWeight: 600,
-        opacity: disabled || busy ? 0.6 : 1
+        // Desabilitado se distingue por fundo, texto e borda tracejada — nunca
+        // só por opacidade, que some no contraste.
+        ...(disabled || busy
+          ? { border: "2px dashed var(--rule2)", background: "var(--sunken)", color: "var(--ink2)", cursor: "default" }
+          : { border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--on-accent)" })
       }}
     >
       {busy ? "…" : children}
