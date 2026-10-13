@@ -147,7 +147,7 @@ test.describe.serial("fluxo de manutenção ponta a ponta", () => {
 
     await row.getByRole("button", { name: "Enviar para revisão" }).click();
     await page.getByRole("button", { name: "Confirmar" }).click();
-    await expect(page.getByRole("status").filter({ hasText: `Enviar para revisão concluído: ${name} v1` })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: `Enviada para revisão: ${name} v1` })).toBeVisible();
 
     // O mantenedor editou esta versão e nunca assina: sem assinaturas, Publicar
     // fica bloqueado com o motivo (qual dos dois depende dos revisores de dev).
@@ -162,7 +162,7 @@ test.describe.serial("fluxo de manutenção ponta a ponta", () => {
     await refreshed.getByRole("button", { name: "Aposentar" }).click();
     await page.getByLabel("Código do autenticador", { exact: true }).fill(await freshCode(secret));
     await page.getByRole("button", { name: "Confirmar" }).click();
-    await expect(page.getByRole("status").filter({ hasText: `Aposentar concluído: ${name} v1` })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: `Aposentada: ${name} v1` })).toBeVisible();
 
     await page.getByRole("button", { name: "voltar" }).click();
   });

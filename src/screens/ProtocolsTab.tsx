@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { gql } from "../lib/api";
 import { graphql } from "../gql";
@@ -61,9 +61,20 @@ const RevertMutation = graphql(`
   }
 `);
 
+// "em uso", igual ao painel da cidade (PR-14).
 const STATUS_LABELS: Record<string, string> = {
-  draft: "rascunho", in_review: "em revisão", published: "publicada", active: "ativa", retired: "aposentada"
+  draft: "rascunho", in_review: "em revisão", published: "publicada", active: "em uso", retired: "aposentada"
 };
+// Resultado no particípio, igual ao painel da cidade (PR-14).
+const DONE_LABELS: Record<string, string> = {
+  submit: "Enviada para revisão", publish: "Publicada", activate: "Ativada", retire: "Aposentada"
+};
+// Coluna Ativação (PR-01): só conta assinaturas onde a etapa pede.
+function activationCell(row: { status: string; activationSignatures: number }): string {
+  if (row.status === "active") return "em uso";
+  if (row.status === "published") return `${row.activationSignatures}/2`;
+  return "—";
+}
 // A frase nomeia a versão-alvo (spec 2026-09-23-revert-target §5). "deve
 // voltar", não "vai voltar": a leitura é sem lock, e a API decide no clique.
 // Sem alvo na leitura, cai na frase sem número em vez de imprimir "null".
@@ -76,7 +87,7 @@ const STATUS_LABELS: Record<string, string> = {
 // entre a leitura e o clique e o servidor reresolveu sob lock, como deve.
 function doneMessage(pending: Pending, revertedTo: number | null): string {
   const { row, action } = pending;
-  if (action.kind !== "revert") return `${action.label} concluído: ${row.name} v${row.version}`;
+  if (action.kind !== "revert") return `${DONE_LABELS[action.kind] ?? action.label}: ${row.name} v${row.version}`;
   if (revertedTo == null) return `${action.label} concluído.`;
   if (row.revertTargetVersion != null && row.revertTargetVersion !== revertedTo) {
     return `${action.label} concluído: estava previsto v${row.revertTargetVersion}; ` +
@@ -162,6 +173,20 @@ export function ProtocolsTab({ slug }: { slug: string }) {
   // painel e iria junto.
   const [ staleNotice, setStaleNotice ] = useState<string | null>(null);
   const [ done, setDone ] = useState<string | null>(null);
+  const [ hideRetired, setHideRetired ] = useState(false);
+  // A confirmação abre à vista, com o foco no primeiro campo (ou no título);
+  // o resultado recebe o foco ao concluir (PR-04).
+  const confirmRef = useRef<HTMLDivElement | null>(null);
+  const doneRef = useRef<HTMLParagraphElement | null>(null);
+  useEffect(() => {
+    const el = confirmRef.current;
+    if (!pending || !el) return;
+    el.scrollIntoView?.({ block: "nearest" });
+    const target = el.querySelector<HTMLElement>("input,textarea") ?? el.querySelector<HTMLElement>("h2");
+    if (target && !target.matches("input,textarea")) target.tabIndex = -1;
+    target?.focus();
+  }, [ pending ]);
+  useEffect(() => { if (done) doneRef.current?.focus(); }, [ done ]);
 
   function open(row: Row, action: ProtocolAction) {
     setPending({ row, action });
@@ -249,7 +274,14 @@ export function ProtocolsTab({ slug }: { slug: string }) {
   // O cast estreita revertTargetVersion, que o codegen emite como opcional
   // (`Maybe<number>`) — é ele quem garante `number | null` para `Row`, não
   // decoração: sem ele, `undefined` passaria pelo `=== null` da revertNotice.
-  const rows = (query.data?.data?.city?.protocolVersions ?? []) as Row[];
+  const all = (query.data?.data?.city?.protocolVersions ?? []) as Row[];
+  // Mesma ordem do painel da cidade: nome, versão decrescente, aposentadas no fim (PR-13).
+  const rows = [ ...all ]
+    .filter((r) => !hideRetired || r.status !== "retired")
+    .sort((a, b) => Number(a.status === "retired") - Number(b.status === "retired")
+      || a.name.localeCompare(b.name) || b.version - a.version);
+  // Versão em uso do mesmo nome, para Ativar dizer o que sai (PR-05).
+  const inUseOf = (name: string) => all.find((r) => r.name === name && r.status === "active")?.version ?? null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -259,27 +291,37 @@ export function ProtocolsTab({ slug }: { slug: string }) {
       {query.isPending && <p>carregando…</p>}
       {query.isError && <ErrorState message={query.error instanceof Error ? query.error.message : "erro inesperado"} />}
       {fieldError && <ErrorState message={`${fieldError.code} — ${fieldError.message}`} />}
-      {done && <p role="status" style={{ margin: 0, fontSize: 12.5 }}>{done}</p>}
+      {done && <p ref={doneRef} tabIndex={-1} role="status" style={{ margin: 0, fontSize: 12.5 }}>{done}</p>}
       {staleNotice && <ErrorState message={staleNotice} />}
 
-      {query.isSuccess && !fieldError && rows.length === 0 && <EmptyState message="nenhum protocolo" />}
+      {all.length > 0 && (
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
+          <input type="checkbox" checked={hideRetired} onChange={(e) => setHideRetired(e.target.checked)} />
+          esconder aposentadas
+        </label>
+      )}
+      {query.isSuccess && !fieldError && all.length === 0 && <EmptyState message="nenhum protocolo" />}
       {rows.length > 0 && (
         <DataTable
           rowKey={(row) => `${row.name}-${row.version}`}
           columns={[
             { key: "name", label: "Nome" },
             { key: "version", label: "Versão" },
-            { key: "status", label: "Status", render: (row: Row) => <Tag>{STATUS_LABELS[row.status] ?? row.status}</Tag> },
+            { key: "status", label: "Status", render: (row: Row) => <Tag tone={row.status === "active" ? "accent" : undefined}>{STATUS_LABELS[row.status] ?? row.status}</Tag> },
             { key: "publication", label: "Publicação", render: (row: Row) => `${row.publicationSignatures}/2` },
-            { key: "activation", label: "Ativação", render: (row: Row) => `${row.activationSignatures}/2` },
+            { key: "activation", label: "Ativação", render: (row: Row) => activationCell(row) },
             { key: "eligibleReviewers", label: "Revisores" },
             {
               key: "actions", label: "Ações",
               render: (row: Row) => (
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {row.status === "active" && !row.revertible && (
+                    <small style={{ fontSize: 11, color: "var(--ink3)" }}>sem versão anterior para reverter</small>
+                  )}
                   {actionsFor(row).map((action) => (
                     <div key={action.kind} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <Button onClick={() => open(row, action)} disabled={action.disabledReason !== null || mutation.isPending}>{action.label}</Button>
+                      <Button onClick={() => open(row, action)} disabled={action.disabledReason !== null || mutation.isPending}
+                        variant={action.kind === "retire" || action.kind === "revert" ? "danger" : "primary"}>{action.label}</Button>
                       {action.disabledReason && <small style={{ fontSize: 11, color: "var(--ink3)" }}>{action.disabledReason}</small>}
                     </div>
                   ))}
@@ -292,13 +334,20 @@ export function ProtocolsTab({ slug }: { slug: string }) {
       )}
 
       {pending && (
+        <div ref={confirmRef}>
         <Panel title={`Confirmar: ${pending.action.label} ${pending.row.name} v${pending.row.version}`}>
           <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {pending.action.kind === "revert" && <p style={{ margin: 0, fontSize: 12.5 }}>{revertNotice(pending.row.revertTargetVersion)}</p>}
+            {pending.action.kind === "activate" && inUseOf(pending.row.name) !== null && (
+              <p style={{ margin: 0, fontSize: 12.5 }}>
+                {`A cidade passa a usar a versão ${pending.row.version}; a versão ${inUseOf(pending.row.name)} (em uso) sai de uso.`}
+              </p>
+            )}
             {formError && <ErrorState message={formError} />}
             {pending.action.needsReason && (
               <>
-                <Field label="Motivo" value={reason} onChange={setReason} />
+                <Field label="Motivo" value={reason} onChange={setReason} multiline
+                  placeholder="ex.: v2 classificou febre alta como baixa prioridade" />
                 {reasonError && <ErrorState message={reasonError.message} />}
               </>
             )}
@@ -315,6 +364,7 @@ export function ProtocolsTab({ slug }: { slug: string }) {
             </div>
           </form>
         </Panel>
+        </div>
       )}
     </div>
   );

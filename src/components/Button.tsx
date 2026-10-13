@@ -6,9 +6,11 @@ type Props = {
   disabled?: boolean;
   busy?: boolean;
   onClick?: () => void;
+  // secondary: ação de apoio; danger: destrutiva (aposentar, reverter) — PR-12.
+  variant?: "primary" | "secondary" | "danger";
 };
 
-export function Button({ children, type = "button", disabled, busy, onClick }: Props) {
+export function Button({ children, type = "button", disabled, busy, onClick, variant = "primary" }: Props) {
   return (
     <button
       type={type}
@@ -24,6 +26,8 @@ export function Button({ children, type = "button", disabled, busy, onClick }: P
         // só por opacidade, que some no contraste.
         ...(disabled || busy
           ? { border: "2px dashed var(--rule2)", background: "var(--sunken)", color: "var(--ink2)", cursor: "default" }
+          : variant === "danger" ? { border: "1px solid var(--down)", background: "var(--panel)", color: "var(--down)" }
+          : variant === "secondary" ? { border: "1px solid var(--rule2)", background: "var(--panel)", color: "var(--ink)" }
           : { border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--on-accent)" })
       }}
     >

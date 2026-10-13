@@ -88,7 +88,7 @@ describe("ProtocolsTab", () => {
     await waitFor(() => expect(calls(fetchMock, "submitProtocolForReview")).toHaveLength(1));
     expect(bodyOf(calls(fetchMock, "submitProtocolForReview")[0]).variables)
       .toEqual({ citySlug: "sp", name: "dengue", version: 1 });
-    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Enviar para revisão concluído: dengue v1");
+    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Enviada para revisão: dengue v1");
   });
 
   it("sucesso invalida a lista (nova consulta de versões)", async () => {
@@ -246,7 +246,7 @@ describe("ProtocolsTab", () => {
     expect((screen.getByRole("button", { name: "Aposentar" }) as HTMLButtonElement).disabled).toBe(true);
 
     resolveMutation();
-    await waitFor(() => expect(screen.getByRole("status")).toHaveProperty("textContent", "Enviar para revisão concluído: dengue v1"));
+    await waitFor(() => expect(screen.getByRole("status")).toHaveProperty("textContent", "Enviada para revisão: dengue v1"));
   });
 
   it("clicar em atualizar limpa a mensagem de status", async () => {
@@ -256,7 +256,7 @@ describe("ProtocolsTab", () => {
 
     await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
-    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Enviar para revisão concluído: dengue v1");
+    expect(await screen.findByRole("status")).toHaveProperty("textContent", "Enviada para revisão: dengue v1");
 
     await user.click(screen.getByRole("button", { name: "atualizar" }));
     expect(screen.queryByRole("status")).toBeNull();
@@ -432,3 +432,73 @@ describe("ProtocolsTab", () => {
     expect(screen.queryByRole("button", { name: "Confirmar" })).toBeNull();
   });
 });
+
+describe("ProtocolsTab — usabilidade (6d)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+  function route(rows: unknown[], mutations: Record<string, () => Response> = {}) {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("query CityProtocolVersions")) return Promise.resolve(versionsReply(rows));
+      const hit = Object.keys(mutations).find((field) => body.query.includes(field));
+      return Promise.resolve(hit ? mutations[hit]() : reply(500, {}));
+    });
+  }
+
+  it("PR-04: a confirmação abre à vista com o foco no código; o resultado recebe o foco", async () => {
+    const scroll = vi.fn(); Element.prototype.scrollIntoView = scroll;
+    route([ v({ status: "draft" }) ], { submitProtocolForReview: () => mutationReply("submitProtocolForReview", true) });
+    renderTab();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Enviar para revisão" }));
+    expect(scroll).toHaveBeenCalled();
+    expect(document.activeElement?.textContent).toContain("Confirmar: Enviar para revisão dengue v1");
+    await user.click(screen.getByRole("button", { name: "Confirmar" }));
+    const status = await screen.findByRole("status");
+    await waitFor(() => expect(document.activeElement).toBe(status));
+  });
+
+  it("PR-05: Ativar nomeia a versão em uso que sai", async () => {
+    route([ v({ version: 2, status: "published", activationSignatures: 2, activationMissing: 0 }), v({ version: 1, status: "active" }) ]);
+    renderTab();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Ativar" }));
+    expect(screen.getByText("A cidade passa a usar a versão 2; a versão 1 (em uso) sai de uso.")).not.toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText("Código do autenticador"));
+  });
+
+  it("PR-12/PR-14/PR-16/PR-01: 'em uso', perigo em Aposentar, sem reversão explicada, coluna de ativação", async () => {
+    route([ v({ version: 2, status: "draft" }), v({ version: 1, status: "active" }) ]);
+    renderTab();
+    const table = within(await screen.findByRole("table"));
+    expect(table.getAllByText("em uso").length).toBe(2);
+    const retire = table.getByRole("button", { name: "Aposentar" });
+    expect(retire.style.color).toBe("var(--down)");
+    expect(table.getByText("sem versão anterior para reverter")).not.toBeNull();
+    expect(table.getByText("—")).not.toBeNull();
+  });
+
+  it("PR-13: ordem por nome e versão decrescente, aposentadas no fim; filtro", async () => {
+    route([ v({ name: "zika", version: 1, status: "retired" }), v({ name: "dengue", version: 1, status: "active" }),
+      v({ name: "dengue", version: 2, status: "draft" }) ]);
+    renderTab();
+    const rows = within(await screen.findByRole("table")).getAllByRole("row").slice(1);
+    expect(rows.map((r) => r.querySelector("td")?.textContent + " " + r.querySelectorAll("td")[1]?.textContent))
+      .toEqual([ "dengue 2", "dengue 1", "zika 1" ]);
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText("esconder aposentadas"));
+    expect(within(screen.getByRole("table")).queryByText("zika")).toBeNull();
+  });
+
+  it("PR-17: motivo da reversão em várias linhas com exemplo", async () => {
+    route([ v({ version: 2, status: "active", revertible: true, revertTargetVersion: 1 }) ]);
+    renderTab();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Reverter" }));
+    const reason = screen.getByLabelText("Motivo");
+    expect(reason.tagName).toBe("TEXTAREA");
+    expect(reason.getAttribute("placeholder")).toMatch(/^ex\.: /);
+  });
+});
+
