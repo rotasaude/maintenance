@@ -96,7 +96,7 @@ export function Login(
   const shownMessage = error ?? notice ?? null;
 
   return (
-    <div style={{ maxWidth: 320, margin: "64px auto", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ width: "100%", maxWidth: 320, margin: "64px auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <h1 style={{ fontSize: 18, margin: 0 }}>Entrar</h1>
       {shownMessage && <ErrorState message={shownMessage} />}
 

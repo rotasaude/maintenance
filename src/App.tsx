@@ -50,7 +50,7 @@ export function App({ initialInvitationToken = null }: { initialInvitationToken?
     env = maintenanceEnv();
   } catch (err) {
     return (
-      <div style={{ maxWidth: 320, margin: "64px auto" }}>
+      <div style={{ width: "100%", maxWidth: 320, margin: "64px auto" }}>
         <ErrorState message={err instanceof Error ? err.message : "erro de configuração do ambiente"} />
       </div>
     );

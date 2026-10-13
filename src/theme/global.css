@@ -14,9 +14,11 @@
 
 * { box-sizing: border-box; }
 
-html, body, #root { margin: 0; padding: 0; height: 100%; }
-/* A faixa de ambiente e o Shell dividem a altura: sem rolagem sobrando (A-23). */
-#root { display: flex; flex-direction: column; }
+html, body { margin: 0; padding: 0; height: 100%; }
+/* A faixa de ambiente e o Shell dividem a altura sem rolagem sobrando (A-23);
+   o #root cresce com a página (min-height, não height), para a faixa sticky
+   nunca sair do topo (I1). */
+#root { margin: 0; padding: 0; min-height: 100%; display: flex; flex-direction: column; }
 
 body {
   background: var(--bg);

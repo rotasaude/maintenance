@@ -125,7 +125,7 @@ export function Invitation({ token, onDone }: { token: string; onDone(message: s
 
   if (loadError) {
     return (
-      <div style={{ maxWidth: 320, margin: "64px auto" }}>
+      <div style={{ width: "100%", maxWidth: 320, margin: "64px auto" }}>
         <ErrorState message={loadError} />
       </div>
     );
@@ -134,7 +134,7 @@ export function Invitation({ token, onDone }: { token: string; onDone(message: s
   if (!enrollment || !qrDataUrl) return <p>carregando…</p>;
 
   return (
-    <div style={{ maxWidth: 320, margin: "64px auto", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ width: "100%", maxWidth: 320, margin: "64px auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <h1 style={{ fontSize: 18, margin: 0 }}>Matricular autenticador</h1>
       <p style={{ margin: 0, fontSize: 13, color: "var(--ink2)" }}>{enrollment.email_address}</p>
 

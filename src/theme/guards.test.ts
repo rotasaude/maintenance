@@ -54,3 +54,20 @@ describe("guardas mais estritas (A-25) e CSS global (A-22, A-23, A-28)", () => {
   });
 });
 
+describe("layout de coluna sem efeitos colaterais (I1)", () => {
+  const css = readFileSync(join(src, "theme/global.css"), "utf8");
+  it("#root cresce com a página (min-height), sem altura fixa: a faixa sticky não sai do topo", () => {
+    expect(css).toMatch(/html,\s*body\s*\{[^}]*height:\s*100%/);
+    expect(css).toMatch(/#root\s*\{[^}]*min-height:\s*100%/);
+    expect(css).not.toMatch(/#root[^{]*\{[^}]*(^|[^-])height:\s*100%/);
+  });
+  it("Login, Convite e o erro de config ocupam a largura disponível na coluna", () => {
+    for (const f of [ "screens/Login.tsx", "screens/Invitation.tsx", "App.tsx" ]) {
+      const code = readFileSync(join(src, f), "utf8");
+      const styles = [ ...code.matchAll(/\{\{[^}]*maxWidth: 320, margin: "64px auto"[^}]*\}/g) ];
+      expect(styles.length, f).toBeGreaterThan(0);
+      for (const m of styles) expect(m[0], f).toMatch(/[^x]width: "100%"/);
+    }
+  });
+});
+
