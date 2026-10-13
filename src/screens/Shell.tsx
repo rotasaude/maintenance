@@ -49,7 +49,7 @@ export function Shell() {
   }
 
   return (
-    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: "1 0 auto", display: "flex", flexDirection: "column" }}>
       <header
         style={{
           display: "flex",

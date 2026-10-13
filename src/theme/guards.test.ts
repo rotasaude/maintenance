@@ -47,7 +47,10 @@ describe("guardas mais estritas (A-25) e CSS global (A-22, A-23, A-28)", () => {
   });
   it("a página não sobra rolagem: #root em coluna e o Shell ocupa o resto", () => {
     expect(css).toMatch(/#root\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column/);
-    expect(readFileSync(join(src, "screens/Shell.tsx"), "utf8")).not.toMatch(/minHeight:\s*"100%"/);
+    const shell = readFileSync(join(src, "screens/Shell.tsx"), "utf8");
+    expect(shell).not.toMatch(/minHeight:\s*"100%"/);
+    // Cresce com o conteúdo (o trilho acompanha páginas longas) e não encolhe.
+    expect(shell).toMatch(/flex:\s*"1 0 auto"/);
   });
 });
 
