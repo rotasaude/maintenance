@@ -53,4 +53,11 @@ describe("Shell: topo e trilho", () => {
     expect(within(header).getByText("Rota Saúde")).toBeTruthy();
     expect(within(header).getByRole("button", { name: "sair" })).toBeTruthy();
   });
+
+  it("A-27: 'sair' tem estilo secundário (contraste de forma sobre o topo escuro)", async () => {
+    renderShell();
+    const out = await screen.findByRole("button", { name: "sair" });
+    expect(out.style.background).toBe("var(--panel)");
+  });
 });
+

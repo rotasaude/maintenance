@@ -15,6 +15,8 @@
 * { box-sizing: border-box; }
 
 html, body, #root { margin: 0; padding: 0; height: 100%; }
+/* A faixa de ambiente e o Shell dividem a altura: sem rolagem sobrando (A-23). */
+#root { display: flex; flex-direction: column; }
 
 body {
   background: var(--bg);
@@ -46,7 +48,10 @@ a { color: var(--accent); text-decoration: none; }
 
 /* Tabelas largas: rolam dentro do contêiner; a dica só com transbordo. */
 .table-scroll { overflow-x: auto; }
+/* A dica aparece no topo e no fim (tabela longa, A-22) e é só visual: o texto
+   alternativo vazio a tira do leitor de tela (A-28). */
+.table-scroll.is-overflowing::before,
 .table-scroll.is-overflowing::after {
-  content: "⇆ role para o lado";
+  content: "⇆ role para o lado" / "";
   display: block; padding: 4px 10px; font-size: 11px; color: var(--ink2);
 }

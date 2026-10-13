@@ -30,3 +30,24 @@ describe("tabelas do maintenance", () => {
     expect(code).toMatch(/<TableScroll>\s*<table/);
   });
 });
+
+describe("guardas mais estritas (A-25) e CSS global (A-22, A-23, A-28)", () => {
+  const css = readFileSync(join(src, "theme/global.css"), "utf8");
+  const outsideEnv = css.replace(/:root\s*\{[^}]*--env-[^}]*\}/, "");
+  it("global.css sem cor fixa nem outline zerado fora das variáveis da faixa", () => {
+    expect(outsideEnv).not.toMatch(/#[0-9a-fA-F]{3,8}\b|oklch\(|rgba?\(/);
+    expect(outsideEnv).not.toMatch(/outline(-width)?:\s*(none|0)\b/);
+  });
+  it("hex com aspas simples, crase ou 8 dígitos, e outline 0, também são pegos", () => {
+    expect(offenders(/["'`]#[0-9a-fA-F]{3,8}["'`]/)).toEqual([]);
+    expect(offenders(/outline(Width)?:\s*["']?(none|0)["']?[,\s}]/)).toEqual([]);
+  });
+  it("dica de rolagem no topo e no fim, sem leitura pelo leitor de tela", () => {
+    expect(css).toMatch(/\.table-scroll\.is-overflowing::before,\s*\.table-scroll\.is-overflowing::after\s*\{[^}]*content:\s*"⇆ role para o lado"\s*\/\s*""/);
+  });
+  it("a página não sobra rolagem: #root em coluna e o Shell ocupa o resto", () => {
+    expect(css).toMatch(/#root\s*\{[^}]*display:\s*flex;[^}]*flex-direction:\s*column/);
+    expect(readFileSync(join(src, "screens/Shell.tsx"), "utf8")).not.toMatch(/minHeight:\s*"100%"/);
+  });
+});
+

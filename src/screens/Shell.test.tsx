@@ -90,4 +90,31 @@ describe("Shell", () => {
     expect(screen.getByRole("button", { name: "Cidades" }).getAttribute("aria-current")).toBe("page");
     expect(screen.queryByRole("button", { name: "voltar" })).toBeNull();
   });
+
+  it("A-24: no detalhe, clicar em Cidades no trilho volta ao catálogo", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(reply(200, { id: "m1", email_address: "mantenedor@rotasaude.app", expires_at: "2026-01-01T01:00:00Z" }));
+      if (path === "/graphql") {
+        const body = JSON.parse((init as RequestInit).body as string);
+        if (String(body.query).includes("query CityHeader")) {
+          return Promise.resolve(
+            reply(200, { data: { city: { slug: "sp", name: "São Paulo", uf: "SP", status: "ACTIVE", schemaVersion: "1", schemaBehind: false, createdAt: "2026-01-01T00:00:00Z", channel: null } } })
+          );
+        }
+        return Promise.resolve(
+          reply(200, { data: { cities: [ { slug: "sp", name: "São Paulo", uf: "SP", status: "ACTIVE", schemaVersion: "1", schemaBehind: false, createdAt: "2026-01-01T00:00:00Z" } ] } })
+        );
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+    renderShell();
+    await user.click(await screen.findByText("São Paulo"));
+    expect(await screen.findByRole("button", { name: "voltar" })).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "Cidades" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "voltar" })).toBeNull());
+    expect(await screen.findByText("São Paulo")).not.toBeNull();
+  });
 });
+

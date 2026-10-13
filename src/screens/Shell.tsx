@@ -49,7 +49,7 @@ export function Shell() {
   }
 
   return (
-    <div style={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <header
         style={{
           display: "flex",
@@ -81,7 +81,7 @@ export function Shell() {
 
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
           <span style={{ fontSize: 12.5 }}>{me?.emailAddress}</span>
-          <Button onClick={() => void signOut()}>sair</Button>
+          <Button variant="secondary" onClick={() => void signOut()}>sair</Button>
         </div>
       </header>
 
