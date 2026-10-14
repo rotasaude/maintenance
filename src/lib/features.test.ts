@@ -137,3 +137,22 @@ describe("featureLabel do 19c", () => {
     expect(missingText("clinical_record_disabled")).toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 21a", () => {
+  it("as quatro chaves do 21a têm nome em português", () => {
+    expect(featureLabel("exam_tracking")).toBe("Rastreamento de exames (pedido, regulação, prazos e resultado)");
+    expect(featureLabel("exam_fhir_inbound")).toBe("Entrada de resultados por FHIR (laboratórios)");
+    expect(featureLabel("exam_pec_bridge")).toBe("Solicitar exames pela tela de sistemas externos do PEC");
+    expect(featureLabel("fake_lab")).toBe("Laboratório simulado (desenvolvimento)");
+  });
+
+  it("pré-requisitos do 21a têm frase", () => {
+    expect(missingText("exam_tracking_disabled")).toBe("rastreamento de exames (exam_tracking) desligado");
+    expect(missingText("exam_fhir_inbound_disabled")).toBe("entrada de resultados por FHIR (exam_fhir_inbound) desligada");
+    expect(missingText("pec_external_view_disabled")).toBe("página para os sistemas externos do PEC (pec_external_view) desligada");
+    expect(missingSummary([ "exam_tracking_disabled", "pec_external_view_disabled" ]))
+      .toBe("rastreamento de exames (exam_tracking) desligado; página para os sistemas externos do PEC (pec_external_view) desligada");
+    // exam_tracking exige record_mode (contrato A1): a frase já existe.
+    expect(missingText("record_mode_off")).toBe("modo de prontuário desligado");
+  });
+});

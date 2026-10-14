@@ -45,6 +45,12 @@ const MISSING_LABELS: Record<string, string> = {
   record_mode_not_integrated: "modo de prontuário diferente de integrated",
   pec_origin_missing: "endereço de origem do PEC não preenchido",
   pec_hmac_key_missing: "chave HMAC do PEC não gravada",
+  // Módulo 21a: exam_fhir_inbound e exam_pec_bridge exigem exam_tracking;
+  // exam_pec_bridge também pec_external_view; fake_lab exige exam_fhir_inbound.
+  // exam_tracking exige record_mode (record_mode_off, já traduzido acima).
+  exam_tracking_disabled: "rastreamento de exames (exam_tracking) desligado",
+  exam_fhir_inbound_disabled: "entrada de resultados por FHIR (exam_fhir_inbound) desligada",
+  pec_external_view_disabled: "página para os sistemas externos do PEC (pec_external_view) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -58,7 +64,12 @@ const FEATURE_LABELS: Record<string, string> = {
   controlled_prescriptions: "Receita de controle especial e de antimicrobiano (SNCR)",
   sncr_mock: "SNCR simulado (desenvolvimento)",
   patient_timeline: "Linha do tempo do paciente",
-  pec_external_view: "Página para os sistemas externos do PEC"
+  pec_external_view: "Página para os sistemas externos do PEC",
+  // Módulo 21a (ADR 0036): fake_lab só existe fora de produção.
+  exam_tracking: "Rastreamento de exames (pedido, regulação, prazos e resultado)",
+  exam_fhir_inbound: "Entrada de resultados por FHIR (laboratórios)",
+  exam_pec_bridge: "Solicitar exames pela tela de sistemas externos do PEC",
+  fake_lab: "Laboratório simulado (desenvolvimento)"
 };
 
 export function featureLabel(key: string): string | null {
