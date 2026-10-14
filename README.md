@@ -162,7 +162,7 @@ quadro nem aparece, e se o catálogo trouxer a chave mas o schema não tiver
 `cityPecConfig`, só o quadro mostra o aviso da ordem de deploy.
 
 **Rastreamento de exames (módulo 21a).** Os interruptores `exam_tracking`
-("Rastreamento de exames", exige o modo de prontuário `record`), `exam_fhir_inbound`
+("Rastreamento de exames", exige o modo de prontuário ligado: `record` ou `integrated`), `exam_fhir_inbound`
 ("Entrada de resultados por FHIR", exige `exam_tracking`), `exam_pec_bridge`
 ("Solicitar exames pela tela de sistemas externos do PEC", exige
 `exam_tracking` e `pec_external_view`) e `fake_lab` ("Laboratório simulado",

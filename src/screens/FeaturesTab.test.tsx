@@ -317,7 +317,7 @@ describe("FeaturesTab — assinatura digital (módulo 19b)", () => {
     });
   }
 
-  it("digital_signature pelo mecanismo genérico: falta o prontuário e liga com dois cliques", async () => {
+  it("digital_signature pelo mecanismo genérico: falta o modo de prontuário e liga com dois cliques", async () => {
     const user = userEvent.setup();
     const turnedOn: Feature = { ...SIGNATURE_OFF, enabled: true, changedAt: "2026-10-08T13:00:00Z", changedBy: "dev@local" };
     let listed = [ SIGNATURE_OFF ];
@@ -437,7 +437,7 @@ describe("FeaturesTab — assinatura digital (módulo 19b)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 
-  it("clinical_documents pelo mecanismo genérico: nome em português, falta o prontuário e liga com dois cliques", async () => {
+  it("clinical_documents pelo mecanismo genérico: nome em português, falta o modo de prontuário e liga com dois cliques", async () => {
     const user = userEvent.setup();
     const DOCS_OFF: Feature = {
       key: "clinical_documents", description: "Documentos clínicos da consulta", enabled: false, usable: false,
@@ -823,7 +823,7 @@ describe("FeaturesTab — rastreamento de exames (módulo 21a)", () => {
   };
   const LAB_ON: Feature = { ...LAB_OFF, enabled: true, changedAt: "2026-10-13T13:00:00Z", changedBy: "dev@local" };
 
-  it("exam_tracking pelo mecanismo genérico: nome em português, falta o prontuário e liga com dois cliques", async () => {
+  it("exam_tracking pelo mecanismo genérico: nome em português, falta o modo de prontuário e liga com dois cliques", async () => {
     const user = userEvent.setup();
     const turnedOn: Feature = { ...TRACKING_OFF, enabled: true, changedAt: "2026-10-13T13:00:00Z", changedBy: "dev@local" };
     let listed = [ TRACKING_OFF ];
@@ -833,7 +833,7 @@ describe("FeaturesTab — rastreamento de exames (módulo 21a)", () => {
         listed = [ turnedOn ];
         return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
       }
-      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+      return Promise.resolve(featuresReply(listed, { recordMode: "off" }));
     });
     renderTab();
 
