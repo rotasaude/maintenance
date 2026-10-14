@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { FeaturesTab } from "./FeaturesTab";
 import { PSC_MOCK_NOTICE, PSC_REAL_NOTICE } from "../lib/signature";
 import { SNCR_MOCK_NOTICE, SNCR_REAL_NOTICE } from "../lib/sncr";
+import { FAKE_LAB_NOTICE } from "../lib/exams";
 
 afterEach(cleanup);
 
@@ -791,5 +792,122 @@ describe("FeaturesTab — linha do tempo e página do PEC (módulo 20)", () => {
     rerender(tree("rio"));
     await waitFor(() => expect(calls(fetchMock, "query CityPecConfig").some((c) => bodyOf(c).variables.slug === "rio")).toBe(true));
     expect((await screen.findByLabelText("Endereço de origem do PEC") as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("FeaturesTab — rastreamento de exames (módulo 21a)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const TRACKING_OFF: Feature = {
+    key: "exam_tracking", description: "Rastreamento do exame do pedido ao resultado",
+    enabled: false, usable: false, missing: [ "record_mode_off" ], changedAt: null, changedBy: null
+  };
+  const FHIR_OFF: Feature = {
+    key: "exam_fhir_inbound", description: "Entrada FHIR de resultados", enabled: false, usable: false,
+    missing: [ "exam_tracking_disabled" ], changedAt: null, changedBy: null
+  };
+  const BRIDGE_OFF: Feature = {
+    key: "exam_pec_bridge", description: "Solicitar exames pela ponte do PEC", enabled: false, usable: false,
+    missing: [ "exam_tracking_disabled", "pec_external_view_disabled" ], changedAt: null, changedBy: null
+  };
+  const LAB_OFF: Feature = {
+    key: "fake_lab", description: "Laboratório simulado do compose de dev", enabled: false, usable: false,
+    missing: [ "exam_fhir_inbound_disabled" ], changedAt: null, changedBy: null
+  };
+  const LAB_ON: Feature = { ...LAB_OFF, enabled: true, changedAt: "2026-10-13T13:00:00Z", changedBy: "dev@local" };
+
+  it("exam_tracking pelo mecanismo genérico: nome em português, falta o prontuário e liga com dois cliques", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...TRACKING_OFF, enabled: true, changedAt: "2026-10-13T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ TRACKING_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    expect(await screen.findByText("exam_tracking")).not.toBeNull();
+    expect(screen.getByText("Rastreamento de exames (pedido, regulação, prazos e resultado)")).not.toBeNull();
+    expect(screen.getByText("modo de prontuário desligado")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar exam_tracking" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "exam_tracking", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "exam_tracking ligada, mas ainda não utilizável — falta: modo de prontuário desligado."
+    );
+  });
+
+  it("os pré-requisitos do 21a aparecem em português na lista", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ FHIR_OFF, BRIDGE_OFF, LAB_OFF ])));
+    renderTab();
+    expect(await screen.findByText("exam_fhir_inbound")).not.toBeNull();
+    expect(screen.getByText("Entrada de resultados por FHIR (laboratórios)")).not.toBeNull();
+    expect(screen.getByText("Solicitar exames pela tela de sistemas externos do PEC")).not.toBeNull();
+    expect(screen.getByText("Laboratório simulado (desenvolvimento)")).not.toBeNull();
+    expect(screen.getByText("rastreamento de exames (exam_tracking) desligado")).not.toBeNull();
+    expect(screen.getByText(
+      "rastreamento de exames (exam_tracking) desligado; página para os sistemas externos do PEC (pec_external_view) desligada"
+    )).not.toBeNull();
+    expect(screen.getByText("entrada de resultados por FHIR (exam_fhir_inbound) desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/_disabled|undefined|null/);
+    // Desligado: nenhum aviso de simulado.
+    expect(screen.queryByRole("note", { name: "modo do laboratório" })).toBeNull();
+  });
+
+  it("laboratório simulado ligado: aviso na aba", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ LAB_ON ])));
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do laboratório" })).textContent).toBe(FAKE_LAB_NOTICE);
+  });
+
+  it("ligar fake_lab por dois cliques: após o refetch a aba avisa", async () => {
+    const user = userEvent.setup();
+    let listed = [ LAB_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ LAB_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: LAB_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("fake_lab")).not.toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do laboratório" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar fake_lab" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "fake_lab", enabled: true });
+    expect((await screen.findByRole("note", { name: "modo do laboratório" })).textContent).toBe(FAKE_LAB_NOTICE);
+  });
+
+  it("catálogo sem fake_lab (produção): nada quebra e nada diz simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      { ...TRACKING_OFF, enabled: true, usable: true, missing: [] },
+      { ...FHIR_OFF, enabled: true, usable: true, missing: [] },
+      LEDI_OFF
+    ])));
+    renderTab();
+    expect(await screen.findByText("exam_fhir_inbound")).not.toBeNull();
+    expect(screen.queryByText("fake_lab")).toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do laboratório" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });

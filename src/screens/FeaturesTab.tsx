@@ -18,6 +18,7 @@ import { SignaturePlatformPanel } from "./SignaturePlatformPanel";
 import { PSC_MOCK_NOTICE, pscModeNotice } from "../lib/signature";
 import { SncrPlatformPanel } from "./SncrPlatformPanel";
 import { CONTROLLED_KEY, SNCR_MOCK_NOTICE, sncrModeNotice } from "../lib/sncr";
+import { FAKE_LAB_NOTICE, fakeLabOn } from "../lib/exams";
 import { PecConfigPanel } from "./PecConfigPanel";
 import { PEC_EXTERNAL_KEY } from "../lib/pec";
 
@@ -127,6 +128,8 @@ export function FeaturesTab({ slug }: { slug: string }) {
   const profileErr = query.data ? fieldError(query.data.fieldErrors, "profile") : undefined;
   const pscSimulated = city ? pscModeNotice(city.features).simulated : false;
   const sncrSimulated = city ? sncrModeNotice(city.features).simulated : false;
+  // Módulo 21a: aviso pelo estado LIGADO de fake_lab (ausente em produção).
+  const labSimulated = city ? fakeLabOn(city.features) : false;
   const ibge = profileErr ? `indisponível (${profileErr.code})` : ibgeCodeText(city?.profile?.ibgeCode);
 
   return (
@@ -160,6 +163,11 @@ export function FeaturesTab({ slug }: { slug: string }) {
             {sncrSimulated && (
               <p role="note" aria-label="modo do SNCR" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
                 {SNCR_MOCK_NOTICE}
+              </p>
+            )}
+            {labSimulated && (
+              <p role="note" aria-label="modo do laboratório" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
+                {FAKE_LAB_NOTICE}
               </p>
             )}
             {done && <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{done}</p>}

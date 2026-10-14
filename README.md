@@ -161,6 +161,19 @@ deploy: api → dashboard e wpda → maintenance; contra um api sem o módulo 20
 quadro nem aparece, e se o catálogo trouxer a chave mas o schema não tiver
 `cityPecConfig`, só o quadro mostra o aviso da ordem de deploy.
 
+**Rastreamento de exames (módulo 21a).** Os interruptores `exam_tracking`
+("Rastreamento de exames", exige o modo de prontuário `record`), `exam_fhir_inbound`
+("Entrada de resultados por FHIR", exige `exam_tracking`), `exam_pec_bridge`
+("Solicitar exames pela tela de sistemas externos do PEC", exige
+`exam_tracking` e `pec_external_view`) e `fake_lab` ("Laboratório simulado",
+exige `exam_fhir_inbound`) aparecem na mesma lista e ligam como os outros, com
+o que falta em português. `fake_lab` só existe fora de produção; ligado, a aba
+avisa que as guias do prestador simulado ganham laudo de exemplo, sem validade
+clínica. Tokens FHIR dos prestadores, catálogo de exames e prestadores são do
+admin municipal, no dashboard; nada disso passa por aqui. Ordem de deploy:
+api → dashboard e wpda → maintenance; contra um api sem o 21a as chaves só
+não aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
