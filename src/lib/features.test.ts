@@ -156,3 +156,20 @@ describe("módulo 21a", () => {
     expect(missingText("record_mode_off")).toBe("modo de prontuário desligado");
   });
 });
+
+describe("módulo 21b", () => {
+  it("as três chaves do 21b têm nome em português", () => {
+    expect(featureLabel("municipal_lab")).toBe("Laboratório municipal (requisição, amostra, análise e laudo)");
+    expect(featureLabel("lab_hl7_inbound")).toBe("Entrada de resultados de aparelhos por HL7 (middleware)");
+    expect(featureLabel("fake_middleware")).toBe("Middleware simulado (desenvolvimento)");
+  });
+
+  it("pré-requisitos do 21b têm frase", () => {
+    expect(missingText("municipal_lab_disabled")).toBe("laboratório municipal (municipal_lab) desligado");
+    expect(missingText("lab_hl7_inbound_disabled")).toBe("entrada de resultados por HL7 (lab_hl7_inbound) desligada");
+    // municipal_lab exige exam_tracking: a frase do 21a já existe.
+    expect(missingText("exam_tracking_disabled")).toBe("rastreamento de exames (exam_tracking) desligado");
+    expect(missingSummary([ "municipal_lab_disabled", "lab_hl7_inbound_disabled" ]))
+      .toBe("laboratório municipal (municipal_lab) desligado; entrada de resultados por HL7 (lab_hl7_inbound) desligada");
+  });
+});

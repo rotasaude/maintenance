@@ -51,6 +51,10 @@ const MISSING_LABELS: Record<string, string> = {
   exam_tracking_disabled: "rastreamento de exames (exam_tracking) desligado",
   exam_fhir_inbound_disabled: "entrada de resultados por FHIR (exam_fhir_inbound) desligada",
   pec_external_view_disabled: "página para os sistemas externos do PEC (pec_external_view) desligada",
+  // Módulo 21b: municipal_lab exige exam_tracking (frase acima);
+  // lab_hl7_inbound exige municipal_lab; fake_middleware exige lab_hl7_inbound.
+  municipal_lab_disabled: "laboratório municipal (municipal_lab) desligado",
+  lab_hl7_inbound_disabled: "entrada de resultados por HL7 (lab_hl7_inbound) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -69,7 +73,11 @@ const FEATURE_LABELS: Record<string, string> = {
   exam_tracking: "Rastreamento de exames (pedido, regulação, prazos e resultado)",
   exam_fhir_inbound: "Entrada de resultados por FHIR (laboratórios)",
   exam_pec_bridge: "Solicitar exames pela tela de sistemas externos do PEC",
-  fake_lab: "Laboratório simulado (desenvolvimento)"
+  fake_lab: "Laboratório simulado (desenvolvimento)",
+  // Módulo 21b (ADR 0037): fake_middleware só existe fora de produção.
+  municipal_lab: "Laboratório municipal (requisição, amostra, análise e laudo)",
+  lab_hl7_inbound: "Entrada de resultados de aparelhos por HL7 (middleware)",
+  fake_middleware: "Middleware simulado (desenvolvimento)"
 };
 
 export function featureLabel(key: string): string | null {
