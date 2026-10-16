@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_RANGE, LIMITS, SECTORS, ageText, choicesProblem, decimalText, decimalsProblem, draftsToRanges, optionsWith, orNull,
+  EMPTY_RANGE, LIMITS, SECTORS, ageText, analyteChoicesProblem, choicesProblem, decimalText, decimalsProblem, draftsToRanges, optionsWith, orNull,
   parseDecimal, rangeText, rangeToDraft, rangesSummary, sectorText, sexText, textProblem, upsertErrorText, valueTypeText
 } from "./labTemplates";
 
@@ -57,7 +57,23 @@ describe("números", () => {
     expect(decimalText(150000)).toBe("150000");
     expect(decimalText(12)).toBe("12");
     expect(decimalText(null)).toBe("—");
+    expect(decimalText(Number.NaN)).toBe("—");
     expect(decimalText(undefined)).toBe("—");
+  });
+
+  it("decimalText mostra o valor exato guardado, sem arredondar nem expoente", () => {
+    expect(decimalText(0.0000125)).toBe("0,0000125");
+    expect(decimalText(1e-7)).toBe("0,0000001");
+    expect(decimalText(1.23456789)).toBe("1,23456789");
+    expect(decimalText(-0.12345678)).toBe("-0,12345678");
+    for (const n of [ 0.0000125, 1e-7, 1.23456789, 123456.789012345, 0.1 ]) {
+      const draft = rangeToDraft({ sex: "any", ageMinDays: 0, ageMaxDays: 43800, low: n, high: null, text: null });
+      expect((draftsToRanges([ draft ]) as { ranges: { low: number }[] }).ranges[0].low).toBe(n);
+    }
+  });
+
+  it("formas sem sentido em pt-BR são recusadas", () => {
+    for (const bad of [ "+5", ".5", "5.", ",5", "1e3" ]) expect(parseDecimal(bad)).toBeUndefined();
   });
 
   it("idade em anos quando exata, senão em dias", () => {
@@ -123,6 +139,11 @@ describe("faixas de referência", () => {
     expect(ok({ low: "5", high: "5" })).toBe(true);
     expect(err({ low: "5,1", high: "5" })).toBe("faixa 1: \"baixo\" passa de \"alto\"");
     expect(ok({ low: "-3", high: "5" })).toBe(true);
+  });
+
+  it("idade negativa ou com sinal é recusada como não inteira", () => {
+    expect(draftsToRanges([ { ...EMPTY_RANGE, text: "x", ageMinDays: "-1" } ])).toEqual({ error: "faixa 1: idade em dias deve ser um número inteiro" });
+    expect(draftsToRanges([ { ...EMPTY_RANGE, text: "x", ageMaxDays: "+5" } ])).toEqual({ error: "faixa 1: idade em dias deve ser um número inteiro" });
   });
 
   it("texto da faixa: 120 passa, 121 não (contado sem espaços nas pontas)", () => {
@@ -214,5 +235,18 @@ describe("limites de texto (iguais aos do api)", () => {
     expect(choicesProblem([ "a", "a" ])).toBe(phrase);
     expect(choicesProblem([ "a", " a " ])).toBe(phrase);
     expect(choicesProblem([ "a", "A" ])).toBeNull();
+  });
+
+  it("analyteChoicesProblem só confere o tipo lista", () => {
+    expect(analyteChoicesProblem("choice", [])).not.toBeNull();
+    expect(analyteChoicesProblem("choice", [ "a", "a" ])).not.toBeNull();
+    expect(analyteChoicesProblem("choice", [ "a", "b" ])).toBeNull();
+    expect(analyteChoicesProblem("numeric", [])).toBeNull();
+    expect(analyteChoicesProblem("text", [ "", "" ])).toBeNull();
+  });
+
+  it("frases de setor e tipo desconhecidos não citam o api", () => {
+    expect(upsertErrorText([ { message: "invalid_sector" }, { message: "invalid_value_type" } ]))
+      .toBe("setor desconhecido — atualize a tela; tipo de valor desconhecido — atualize a tela");
   });
 });

@@ -57,10 +57,18 @@ export const EMPTY_RANGE: RangeDraft = {
   sex: "any", ageMinDays: "0", ageMaxDays: String(UNBOUNDED_AGE_DAYS), low: "", high: "", text: ""
 };
 
-// Sem separador de milhar, de propósito: é o mesmo formato que a entrada aceita.
-const decimal = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 6, useGrouping: false });
+// Exatamente como guardado (vírgula no lugar do ponto), sem arredondar e sem
+// expoente: salvar um rascunho nunca muda o valor em silêncio. Sem separador
+// de milhar, de propósito: é o mesmo formato que a entrada aceita.
 export function decimalText(n: number | null | undefined): string {
-  return typeof n === "number" ? decimal.format(n) : "—";
+  if (typeof n !== "number" || !Number.isFinite(n)) return "—";
+  let text = String(n);
+  if (/e/i.test(text)) {
+    const [ mantissa, exponent ] = text.toLowerCase().split("e");
+    const digits = Math.max(0, (mantissa.split(".")[1]?.length ?? 0) - Number(exponent));
+    text = n.toFixed(Math.min(digits, 100));
+  }
+  return text.replace(".", ",");
 }
 
 // pt-BR: a vírgula é o separador decimal. "13,5" → 13.5; "" → null; inválido
@@ -94,11 +102,17 @@ export function decimalsProblem(raw: string): string | null {
 // B29: 1 a 20 opções, cada uma de 1 a 60 caracteres (sem espaços nas pontas),
 // sem repetir (a caixa conta, como no api).
 export const CHOICES_PHRASE = `a lista precisa de 1 a ${LIMITS.choices} opções distintas, cada uma com até ${LIMITS.choice} caracteres`;
+// Só vale para componente do tipo `choice`: nos outros a lista é ignorada.
 export function choicesProblem(choices: string[]): string | null {
   const list = choices.map((c) => c.trim());
   const ok = list.length >= 1 && list.length <= LIMITS.choices && new Set(list).size === list.length
     && list.every((c) => c.length >= 1 && c.length <= LIMITS.choice);
   return ok ? null : CHOICES_PHRASE;
+}
+
+// Opções só são conferidas quando o tipo é lista; em numérico/texto são ignoradas.
+export function analyteChoicesProblem(valueType: string, choices: string[]): string | null {
+  return valueType === "choice" ? choicesProblem(choices) : null;
 }
 
 export function ageText(days: number): string {
@@ -172,10 +186,10 @@ export const KEY_EXAMPLE = "hemoglobina";
 const UPSERT_ERRORS: Record<string, string> = {
   sigtap_unknown: "código SIGTAP fora da competência vigente da plataforma",
   duplicate_sigtap: "já existe um exame do catálogo-base com este código SIGTAP",
-  invalid_sector: "setor desconhecido pelo api",
+  invalid_sector: "setor desconhecido — atualize a tela",
   duplicate_analyte_key: "já existe um componente com esta chave neste exame",
   invalid_analyte_key: "chave inválida — " + KEY_HELP,
-  invalid_value_type: "tipo de valor desconhecido pelo api",
+  invalid_value_type: "tipo de valor desconhecido — atualize a tela",
   choices_required: CHOICES_PHRASE,
   invalid_decimals: DECIMALS_PHRASE,
   invalid_reference_ranges:
