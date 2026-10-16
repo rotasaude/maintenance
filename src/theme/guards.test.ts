@@ -29,6 +29,10 @@ describe("tabelas do maintenance", () => {
     const code = readFileSync(join(src, "screens/Audit.tsx"), "utf8");
     expect(code).toMatch(/<TableScroll>\s*<table/);
   });
+  it("a tabela de faixas de referência fica dentro de TableScroll", () => {
+    const code = readFileSync(join(src, "screens/LabAnalyteForm.tsx"), "utf8");
+    expect(code).toMatch(/<TableScroll>\s*<table/);
+  });
 });
 
 describe("guardas mais estritas (A-25) e CSS global (A-22, A-23, A-28)", () => {

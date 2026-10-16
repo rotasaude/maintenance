@@ -24,6 +24,7 @@ import { Tag } from "../components/Tag";
 import { DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
+import { LabAnalyteForm } from "./LabAnalyteForm";
 
 const LabExamTemplatesQuery = graphql(`
   query LabExamTemplates {
@@ -77,6 +78,7 @@ function draftProblem(d: TemplateDraft): string | null {
 }
 
 type Selection = { kind: "new" } | { kind: "edit"; id: string } | null;
+type AnalyteSelection = { kind: "new" } | { kind: "edit"; id: string } | null;
 type Outcome = { tone: "done" | "failed"; text: string };
 type TemplateDraft = {
   sigtapCode: string; name: string; sector: string; material: string; container: string;
@@ -101,6 +103,7 @@ export function LabTemplates() {
   });
   const [ selection, setSelection ] = useState<Selection>(null);
   const [ outcome, setOutcome ] = useState<Outcome | null>(null);
+  const [ analyteSelection, setAnalyteSelection ] = useState<AnalyteSelection>(null);
 
   const templates: TemplateView[] = query.data?.data?.labExamTemplates ?? [];
   const fieldError = query.data?.fieldErrors[0];
@@ -108,6 +111,7 @@ export function LabTemplates() {
 
   function open(next: Selection) {
     setSelection(next);
+    setAnalyteSelection(null);
     setOutcome(null);
   }
 
@@ -193,7 +197,10 @@ export function LabTemplates() {
 
       {current && (
         <section aria-label={`Componentes de ${current.name}`}>
-          <Panel title={`Componentes de ${current.name}`}>
+          <Panel
+            title={`Componentes de ${current.name}`}
+            actions={<Button onClick={() => { setOutcome(null); setAnalyteSelection({ kind: "new" }); }}>novo componente</Button>}
+          >
             {current.analytes.length === 0 ? <EmptyState message="nenhum componente" /> : (
               <DataTable<AnalyteView>
                 columns={[
@@ -203,10 +210,30 @@ export function LabTemplates() {
                   { key: "loinc", label: "LOINC", render: (a) => a.loinc ?? "—" },
                   { key: "unit", label: "Unidade", render: (a) => a.unit ?? "—" },
                   { key: "valueType", label: "Tipo", render: (a) => valueTypeText(a.valueType) },
-                  { key: "ranges", label: "Faixas de referência", render: (a) => rangesSummary(a.referenceRanges) }
+                  { key: "ranges", label: "Faixas de referência", render: (a) => rangesSummary(a.referenceRanges) },
+                  {
+                    key: "edit", label: "",
+                    render: (a) => (
+                      <Button variant="secondary" onClick={() => { setOutcome(null); setAnalyteSelection({ kind: "edit", id: a.id }); }}>editar</Button>
+                    )
+                  }
                 ]}
                 rows={[ ...current.analytes ].sort((a, b) => a.position - b.position)}
                 rowKey={(a) => a.id}
+              />
+            )}
+            {analyteSelection && (
+              <LabAnalyteForm
+                key={analyteSelection.kind === "edit" ? analyteSelection.id : "new"}
+                templateId={current.id}
+                analyte={analyteSelection.kind === "edit" ? current.analytes.find((a) => a.id === analyteSelection.id) ?? null : null}
+                nextPosition={current.analytes.reduce((max, a) => Math.max(max, a.position), 0) + 1}
+                onSaved={(text) => {
+                  setAnalyteSelection(null);
+                  setOutcome({ tone: "done", text });
+                  void queryClient.invalidateQueries({ queryKey: LAB_TEMPLATES_QUERY_KEY });
+                }}
+                onClose={() => setAnalyteSelection(null)}
               />
             )}
           </Panel>

@@ -288,4 +288,38 @@ describe("LabTemplates", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Nome: no máximo 120 caracteres");
     expect(calls(fetchMock, "mutation UpsertLabExamTemplate")).toHaveLength(0);
   });
+
+  it("editar um componente pela tela: salva, fecha o formulário e relê o catálogo", async () => {
+    const user = userEvent.setup();
+    route(fetchMock, {
+      "query LabExamTemplates": () => templatesReply(),
+      "mutation UpsertLabAnalyteTemplate": () => reply(200, { data: { upsertLabAnalyteTemplate: { ok: true, errors: [] } } })
+    });
+    renderScreen();
+    await screen.findByText("Hemograma completo");
+    await user.click(within(rowOf("0202020380")).getByRole("button", { name: "editar" }));
+    const components = screen.getByRole("region", { name: "Componentes de Hemograma completo" });
+    await user.click(within(within(components).getAllByRole("row")[1]).getByRole("button", { name: "editar" }));
+
+    const analyte = screen.getByRole("region", { name: "Componente" });
+    expect((within(analyte).getByLabelText("Nome do componente") as HTMLInputElement).value).toBe("Hemoglobina");
+    await user.click(within(analyte).getByRole("button", { name: "salvar componente" }));
+
+    await waitFor(() => expect(calls(fetchMock, "mutation UpsertLabAnalyteTemplate")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation UpsertLabAnalyteTemplate")[0]).variables.labExamTemplateId).toBe("t1");
+    expect((await screen.findByRole("status")).textContent).toBe("Componente salvo.");
+    expect(screen.queryByRole("region", { name: "Componente" })).toBeNull();
+    await waitFor(() => expect(calls(fetchMock, "query LabExamTemplates").length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("novo componente pela tela: a ordem sugerida é a próxima", async () => {
+    const user = userEvent.setup();
+    route(fetchMock, { "query LabExamTemplates": () => templatesReply() });
+    renderScreen();
+    await screen.findByText("Hemograma completo");
+    await user.click(within(rowOf("0202020380")).getByRole("button", { name: "editar" }));
+    await user.click(screen.getByRole("button", { name: "novo componente" }));
+    const analyte = screen.getByRole("region", { name: "Componente" });
+    expect((within(analyte).getByLabelText("Ordem") as HTMLInputElement).value).toBe("3");
+  });
 });
