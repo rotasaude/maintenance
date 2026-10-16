@@ -186,6 +186,14 @@ do admin municipal, no dashboard; nada disso passa por aqui. Ordem de deploy:
 api → dashboard → maintenance; contra um api sem o 21b as chaves só não
 aparecem.
 
+A tela **Laboratório** do trilho mantém o catálogo-base de exames de
+laboratório da plataforma (vale para todas as cidades do ambiente): exames
+(SIGTAP, setor, material, recipiente, preparo), componentes (chave, LOINC,
+unidade, tipo) e faixas de referência por sexo e idade em dias. Decimal com
+vírgula e sem ponto de milhar. É o ponto de partida que cada laboratório adota
+e ajusta: mudar aqui não altera exame já adotado nem laudo. O SDL vem do api
+(`npm run schema:pull`, depois `npm run codegen`).
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

@@ -181,6 +181,15 @@ export function draftsToRanges(drafts: RangeDraft[]): { ranges: RangeInput[] } |
 // Ajuda da chave do componente (LabAnalyteTemplate::KEY) e exemplo da semente.
 export const KEY_HELP = "começa com letra, até 40 caracteres; minúsculas, números e _ (ex.: hemoglobina)";
 export const KEY_EXAMPLE = "hemoglobina";
+// Mesmas expressões do api (LabAnalyteTemplate::KEY e ::LOINC); vazio é válido
+// no LOINC (opcional).
+export function keyProblem(raw: string): string | null {
+  return /^[a-z][a-z0-9_]{0,39}$/.test(raw.trim()) ? null : `Chave: ${KEY_HELP}`;
+}
+export function loincProblem(raw: string): string | null {
+  const t = raw.trim();
+  return t === "" || /^\d{1,7}-\d$/.test(t) ? null : "LOINC: formato 718-7 (até 7 dígitos, hífen e 1 dígito)";
+}
 
 // Divergência M3: códigos de UserError das duas mutations; desconhecido cru.
 const UPSERT_ERRORS: Record<string, string> = {

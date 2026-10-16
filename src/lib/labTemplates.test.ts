@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EMPTY_RANGE, LIMITS, SECTORS, ageText, analyteChoicesProblem, choicesProblem, decimalText, decimalsProblem, draftsToRanges, optionsWith, orNull,
+  EMPTY_RANGE, LIMITS, SECTORS, ageText, analyteChoicesProblem, choicesProblem, decimalText, decimalsProblem, draftsToRanges, keyProblem, loincProblem, optionsWith, orNull,
   parseDecimal, rangeText, rangeToDraft, rangesSummary, sectorText, sexText, textProblem, upsertErrorText, valueTypeText
 } from "./labTemplates";
 
@@ -248,5 +248,22 @@ describe("limites de texto (iguais aos do api)", () => {
   it("frases de setor e tipo desconhecidos não citam o api", () => {
     expect(upsertErrorText([ { message: "invalid_sector" }, { message: "invalid_value_type" } ]))
       .toBe("setor desconhecido — atualize a tela; tipo de valor desconhecido — atualize a tela");
+  });
+});
+
+describe("chave e LOINC", () => {
+  it("chave como no api: letra minúscula primeiro, até 40", () => {
+    expect(keyProblem("hemoglobina")).toBeNull();
+    expect(keyProblem(" a_1 ")).toBeNull();
+    expect(keyProblem("a".repeat(40))).toBeNull();
+    expect(keyProblem("a".repeat(41))).toMatch(/^Chave: /);
+    for (const bad of [ "", "1a", "_a", "Hb", "a-b", "a b" ]) expect(keyProblem(bad)).toMatch(/^Chave: /);
+  });
+
+  it("LOINC opcional; preenchido segue 1 a 7 dígitos, hífen, 1 dígito", () => {
+    expect(loincProblem("")).toBeNull();
+    expect(loincProblem("718-7")).toBeNull();
+    expect(loincProblem("1234567-8")).toBeNull();
+    for (const bad of [ "12345678-1", "718", "718-77", "a-1", "-7" ]) expect(loincProblem(bad)).toMatch(/^LOINC: /);
   });
 });

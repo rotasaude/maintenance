@@ -11,9 +11,10 @@ type Props = {
   // Texto longo (motivo da reversão, PR-17): várias linhas e um exemplo.
   multiline?: boolean;
   placeholder?: string;
+  maxLength?: number;
 };
 
-export function Field({ label, value, onChange, type = "text", name, autoComplete, helpText, multiline, placeholder }: Props) {
+export function Field({ label, value, onChange, type = "text", name, autoComplete, helpText, multiline, placeholder, maxLength }: Props) {
   const style = {
     padding: "8px 10px", border: "1px solid var(--rule2)", borderRadius: 6, background: "var(--panel)", color: "var(--ink)", fontSize: 13
   };
@@ -25,14 +26,14 @@ export function Field({ label, value, onChange, type = "text", name, autoComplet
       <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--ink2)" }}>
         <span>{label}</span>
         {multiline ? (
-          <textarea name={name} value={value} rows={3} placeholder={placeholder}
+          <textarea name={name} value={value} rows={3} placeholder={placeholder} maxLength={maxLength}
             onChange={(event) => onChange(event.target.value)} style={style} />
         ) : (
           <input
             type={type}
             name={name}
             value={value}
-            placeholder={placeholder}
+            placeholder={placeholder} maxLength={maxLength}
             autoComplete={autoComplete}
             onChange={(event) => onChange(event.target.value)}
             style={style}
