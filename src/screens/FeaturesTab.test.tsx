@@ -7,6 +7,7 @@ import { FeaturesTab } from "./FeaturesTab";
 import { PSC_MOCK_NOTICE, PSC_REAL_NOTICE } from "../lib/signature";
 import { SNCR_MOCK_NOTICE, SNCR_REAL_NOTICE } from "../lib/sncr";
 import { FAKE_LAB_NOTICE } from "../lib/exams";
+import { FAKE_MIDDLEWARE_NOTICE } from "../lib/lab";
 
 afterEach(cleanup);
 
@@ -909,5 +910,118 @@ describe("FeaturesTab — rastreamento de exames (módulo 21a)", () => {
     expect(screen.queryByText("fake_lab")).toBeNull();
     expect(screen.queryByRole("note", { name: "modo do laboratório" })).toBeNull();
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});
+
+describe("FeaturesTab — laboratório municipal (módulo 21b)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const LAB_OFF: Feature = {
+    key: "municipal_lab", description: "Laboratório municipal: fluxo analítico", enabled: false, usable: false,
+    missing: [ "exam_tracking_disabled" ], changedAt: null, changedBy: null
+  };
+  const HL7_OFF: Feature = {
+    key: "lab_hl7_inbound", description: "Entrada HL7 do middleware", enabled: false, usable: false,
+    missing: [ "municipal_lab_disabled" ], changedAt: null, changedBy: null
+  };
+  const MW_OFF: Feature = {
+    key: "fake_middleware", description: "Middleware simulado do compose de dev", enabled: false, usable: false,
+    missing: [ "lab_hl7_inbound_disabled" ], changedAt: null, changedBy: null
+  };
+  const MW_ON: Feature = { ...MW_OFF, enabled: true, changedAt: "2026-10-15T13:00:00Z", changedBy: "dev@local" };
+  const FAKE_LAB_ON: Feature = {
+    key: "fake_lab", description: "Laboratório simulado do compose de dev", enabled: true, usable: true,
+    missing: [], changedAt: "2026-10-15T12:00:00Z", changedBy: "dev@local"
+  };
+
+  it("municipal_lab pelo mecanismo genérico: nome em português, falta o rastreamento e liga com dois cliques", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...LAB_OFF, enabled: true, changedAt: "2026-10-15T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ LAB_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("municipal_lab")).not.toBeNull();
+    expect(screen.getByText("Laboratório municipal (requisição, amostra, análise e laudo)")).not.toBeNull();
+    expect(screen.getByText("rastreamento de exames (exam_tracking) desligado")).not.toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar municipal_lab" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "municipal_lab", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "municipal_lab ligada, mas ainda não utilizável — falta: rastreamento de exames (exam_tracking) desligado."
+    );
+  });
+
+  it("os pré-requisitos do 21b aparecem em português na lista", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ HL7_OFF, MW_OFF ])));
+    renderTab();
+    expect(await screen.findByText("lab_hl7_inbound")).not.toBeNull();
+    expect(screen.getByText("Entrada de resultados de aparelhos por HL7 (middleware)")).not.toBeNull();
+    expect(screen.getByText("Middleware simulado (desenvolvimento)")).not.toBeNull();
+    expect(screen.getByText("laboratório municipal (municipal_lab) desligado")).not.toBeNull();
+    expect(screen.getByText("entrada de resultados por HL7 (lab_hl7_inbound) desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/_disabled|undefined|null/);
+    expect(screen.queryByRole("note", { name: "modo do middleware" })).toBeNull();
+  });
+
+  it("ligar fake_middleware por dois cliques: após o refetch a aba avisa", async () => {
+    const user = userEvent.setup();
+    let listed = [ MW_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ MW_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: MW_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("fake_middleware")).not.toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do middleware" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar fake_middleware" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "fake_middleware", enabled: true });
+    expect((await screen.findByRole("note", { name: "modo do middleware" })).textContent).toBe(FAKE_MIDDLEWARE_NOTICE);
+  });
+
+  it("laboratório e middleware simulados ligados: dois avisos, cada um com seu nome", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ FAKE_LAB_ON, MW_ON ])));
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo do middleware" })).textContent).toBe(FAKE_MIDDLEWARE_NOTICE);
+    expect(screen.getByRole("note", { name: "modo do laboratório" }).textContent).toBe(FAKE_LAB_NOTICE);
+  });
+
+  it("catálogo sem fake_middleware (produção): nada quebra e nada diz middleware simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      { ...LAB_OFF, enabled: true, usable: true, missing: [] },
+      { ...HL7_OFF, enabled: true, usable: true, missing: [] },
+      LEDI_OFF
+    ])));
+    renderTab();
+    expect(await screen.findByText("lab_hl7_inbound")).not.toBeNull();
+    expect(screen.queryByText("fake_middleware")).toBeNull();
+    expect(screen.queryByRole("note", { name: "modo do middleware" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/MIDDLEWARE SIMULADO|undefined|null/);
   });
 });

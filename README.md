@@ -174,6 +174,18 @@ admin municipal, no dashboard; nada disso passa por aqui. Ordem de deploy:
 api → dashboard e wpda → maintenance; contra um api sem o 21a as chaves só
 não aparecem.
 
+**Laboratório municipal (módulo 21b).** Os interruptores `municipal_lab`
+("Laboratório municipal", exige `exam_tracking`), `lab_hl7_inbound` ("Entrada
+de resultados de aparelhos por HL7", exige `municipal_lab`) e
+`fake_middleware` ("Middleware simulado", exige `lab_hl7_inbound`) aparecem na
+mesma lista e ligam como os outros, com o que falta em português.
+`fake_middleware` só existe fora de produção; ligado, a aba avisa que as
+amostras recebidas ganham valores de exemplo pela HL7, sem validade clínica.
+Tokens de middleware, exames adotados, liberadores e motivos de rejeição são
+do admin municipal, no dashboard; nada disso passa por aqui. Ordem de deploy:
+api → dashboard → maintenance; contra um api sem o 21b as chaves só não
+aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
