@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { LabAnalyteForm } from "./LabAnalyteForm";
+import { LAB_TEMPLATES_QUERY_KEY } from "./LabTemplates";
 import type { AnalyteView } from "../lib/labTemplates";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -39,7 +40,7 @@ function renderForm(analyte: AnalyteView | null = HB) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   }
   render(<LabAnalyteForm templateId="t1" analyte={analyte} nextPosition={3} onSaved={onSaved} onClose={onClose} />, { wrapper });
-  return { onSaved, onClose };
+  return { onSaved, onClose, client };
 }
 const field = (label: string) => screen.getByLabelText(label) as HTMLInputElement;
 const save = () => screen.getByRole("button", { name: "salvar componente" });
@@ -144,6 +145,39 @@ describe("LabAnalyteForm", () => {
     expect(field("faixa 1: baixo").value).toBe("13");
     expect(field("faixa 2: alto").value).toBe("15,5");
     expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it("ordem acima do teto de Int é recusada com frase e nada é enviado", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation(() => Promise.resolve(SAVED()));
+    renderForm();
+    await user.clear(field("Ordem"));
+    await user.type(field("Ordem"), "2147483648");
+    await user.click(save());
+    expect((await screen.findByRole("alert")).textContent).toBe("ordem: no máximo 2147483647");
+    expect(calls(fetchMock, "mutation UpsertLabAnalyteTemplate")).toHaveLength(0);
+  });
+
+  it("número enorme na faixa é recusado com frase e nada é enviado", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation(() => Promise.resolve(SAVED()));
+    renderForm();
+    await user.clear(field("faixa 1: alto"));
+    await user.click(field("faixa 1: alto"));
+    await user.paste("9".repeat(310));
+    await user.click(save());
+    expect((await screen.findByRole("alert")).textContent).toBe('faixa 1: "alto" — número grande demais');
+    expect(calls(fetchMock, "mutation UpsertLabAnalyteTemplate")).toHaveLength(0);
+  });
+
+  it("falha de rede ao salvar: relê o catálogo", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
+    const { client } = renderForm();
+    const spy = vi.spyOn(client, "invalidateQueries");
+    await user.click(save());
+    await screen.findByRole("alert");
+    expect(spy).toHaveBeenCalledWith({ queryKey: LAB_TEMPLATES_QUERY_KEY });
   });
 
   it("falha de rede ao salvar: mostra o texto e mantém o digitado", async () => {

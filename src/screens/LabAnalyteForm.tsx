@@ -2,19 +2,20 @@
 // Componente (analito) de um exame do catálogo-base, com as faixas de
 // referência por sexo e idade (módulo 21b, F-21.14; spec §4; contrato §10).
 // A conversão do que foi digitado (vírgula decimal, ponto de milhar recusado)
-// é de labTemplates.ts; regras de conjunto das faixas são do api. Uma recusa
+// e as regras de conjunto das faixas (quantidade, idade, mín ≤ máx, baixo ≤ alto, texto)
+// são de labTemplates.ts, conferidas antes de enviar; o api repete a conferência. Uma recusa
 // nunca apaga o que foi digitado.
 import { useState, type CSSProperties } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { gql } from "../lib/api";
 import { graphql } from "../gql";
 import type { UpsertLabAnalyteTemplateMutationVariables } from "../gql/graphql";
 import {
   EMPTY_RANGE, KEY_HELP, LIMITS, SEXES, VALUE_TYPES, analyteChoicesProblem, decimalsProblem, draftsToRanges, keyProblem, loincProblem,
-  optionsWith, orNull, rangeToDraft, sexText, textProblem, upsertErrorText, valueTypeText,
+  optionsWith, orNull, positionProblem, rangeToDraft, sexText, textProblem, upsertErrorText, valueTypeText,
   type AnalyteView, type RangeDraft
 } from "../lib/labTemplates";
-import { grid, inputStyle, labelStyle, muted, refused, row } from "./LabTemplates";
+import { LAB_TEMPLATES_QUERY_KEY, grid, inputStyle, labelStyle, muted, refused, row } from "./LabTemplates";
 import { Panel } from "../components/Panel";
 import { Button } from "../components/Button";
 import { Field } from "../components/Field";
@@ -36,7 +37,6 @@ const UpsertLabAnalyteTemplateMutation = graphql(`
 type Props = { templateId: string; analyte: AnalyteView | null; nextPosition: number; onSaved(text: string): void; onClose(): void };
 type RangeField = keyof RangeDraft;
 
-const INTEGER = /^\d+$/;
 const RANGE_COLUMNS: { field: RangeField; header: string; label: string }[] = [
   { field: "ageMinDays", header: "Idade mín. (dias)", label: "idade mínima em dias" },
   { field: "ageMaxDays", header: "Idade máx. (dias)", label: "idade máxima em dias" },
@@ -57,6 +57,7 @@ export function LabAnalyteForm({ templateId, analyte, nextPosition, onSaved, onC
   const [ ranges, setRanges ] = useState<RangeDraft[]>(analyte ? analyte.referenceRanges.map(rangeToDraft) : [ { ...EMPTY_RANGE } ]);
   const [ error, setError ] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: (vars: UpsertLabAnalyteTemplateMutationVariables) => gql(UpsertLabAnalyteTemplateMutation, vars),
     onMutate: () => setError(null),
@@ -66,7 +67,11 @@ export function LabAnalyteForm({ templateId, analyte, nextPosition, onSaved, onC
       if (!payload.ok) { setError(upsertErrorText(payload.errors, "analyte")); return; }
       onSaved("Componente salvo.");
     },
-    onError: (err) => setError(err instanceof Error ? err.message : "erro inesperado")
+    // Rede/timeout: o api pode ter gravado; relê o catálogo e mantém o formulário.
+    onError: (err) => {
+      setError(err instanceof Error ? err.message : "erro inesperado");
+      void queryClient.invalidateQueries({ queryKey: LAB_TEMPLATES_QUERY_KEY });
+    }
   });
 
   function change(index: number, field: RangeField, value: string) {
@@ -81,7 +86,7 @@ export function LabAnalyteForm({ templateId, analyte, nextPosition, onSaved, onC
       ?? loincProblem(loinc)
       ?? textProblem("Unidade", unit, LIMITS.unit)
       ?? decimalsProblem(decimals)
-      ?? (INTEGER.test(position.trim()) ? null : "ordem: use um número inteiro")
+      ?? positionProblem(position)
       ?? analyteChoicesProblem(valueType, options);
     if (problem) { setError(problem); return; }
     const parsed = draftsToRanges(ranges);

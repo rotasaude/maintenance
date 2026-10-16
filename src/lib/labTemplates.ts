@@ -80,8 +80,12 @@ export function parseDecimal(raw: string): number | null | undefined {
   const t = raw.trim();
   if (t === "") return null;
   if (!/^-?\d+(,\d+)?$/.test(t)) return undefined;
-  return Number(t.replace(",", "."));
+  const n = Number(t.replace(",", "."));
+  // 310+ dígitos viram Infinity; JSON mandaria null e o limite sumiria em silêncio.
+  return Number.isFinite(n) ? n : undefined;
 }
+export const NUMBER_TOO_BIG = "número grande demais";
+const isWellFormedNumber = (raw: string) => /^-?\d+(,\d+)?$/.test(raw.trim());
 
 // Limites do api (Lab::Templates::SaveExam/SaveAnalyte, Ranges, Choices). O
 // api passa a recusar texto longo em vez de cortar; aqui se confere antes de
@@ -92,6 +96,13 @@ export const LIMITS = {
 
 export function textProblem(label: string, value: string, max: number): string | null {
   return value.trim().length > max ? `${label}: no máximo ${max} caracteres` : null;
+}
+
+export const MAX_POSITION = 2147483647;
+export function positionProblem(raw: string): string | null {
+  const t = raw.trim();
+  if (!/^\d+$/.test(t)) return "ordem: use um número inteiro";
+  return Number(t) > MAX_POSITION ? `ordem: no máximo ${MAX_POSITION}` : null;
 }
 
 export const DECIMALS_PHRASE = "casas decimais de 0 a 4";
@@ -162,7 +173,11 @@ export function draftsToRanges(drafts: RangeDraft[]): { ranges: RangeInput[] } |
     const low = parseDecimal(d.low);
     const high = parseDecimal(d.high);
     for (const [ field, value ] of [ [ "low", low ], [ "high", high ] ] as const) {
-      if (value === undefined) return { error: `${n}: "${RANGE_FIELD_LABELS[field]}" não é um número — ${DOT_IN_NUMBER}` };
+      if (value === undefined) {
+        const raw = field === "low" ? d.low : d.high;
+        if (isWellFormedNumber(raw)) return { error: `${n}: "${RANGE_FIELD_LABELS[field]}" — ${NUMBER_TOO_BIG}` };
+        return { error: `${n}: "${RANGE_FIELD_LABELS[field]}" não é um número — ${DOT_IN_NUMBER}` };
+      }
     }
     const text = orNull(d.text);
     if (low == null && high == null && text === null) return { error: `${n}: informe baixo, alto ou um texto` };
@@ -204,6 +219,11 @@ const UPSERT_ERRORS: Record<string, string> = {
   invalid_reference_ranges:
     `faixas de referência inválidas — confira sexo, idade de 0 a ${UNBOUNDED_AGE_DAYS} dias (mínima ≤ máxima), baixo ≤ alto, texto de até ${LIMITS.rangeText} caracteres e até ${LIMITS.ranges} faixas`,
   invalid_loinc: "código LOINC inválido",
+  invalid_name: `Nome: no máximo ${LIMITS.name} caracteres`,
+  invalid_material: `Material: no máximo ${LIMITS.material} caracteres`,
+  invalid_container: `Recipiente: no máximo ${LIMITS.container} caracteres`,
+  invalid_suggested_method: `Método sugerido: no máximo ${LIMITS.method} caracteres`,
+  invalid_unit: `Unidade: no máximo ${LIMITS.unit} caracteres`,
   not_found: "registro não encontrado — atualize a tela"
 };
 
@@ -222,7 +242,7 @@ export function upsertErrorText(
     .map((e) => {
       if (e.message === "blank") {
         const label = e.path ? BLANK_LABELS[context][e.path] : undefined;
-        return label ? `campo obrigatório vazio: ${label}` : "campo obrigatório vazio";
+        return `campo obrigatório vazio: ${label ?? "um campo obrigatório"}`;
       }
       return UPSERT_ERRORS[e.message] ?? e.message;
     })

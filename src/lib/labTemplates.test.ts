@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_RANGE, LIMITS, SECTORS, ageText, analyteChoicesProblem, choicesProblem, decimalText, decimalsProblem, draftsToRanges, keyProblem, loincProblem, optionsWith, orNull,
-  parseDecimal, rangeText, rangeToDraft, rangesSummary, sectorText, sexText, textProblem, upsertErrorText, valueTypeText
+  parseDecimal, positionProblem, rangeText, rangeToDraft, rangesSummary, sectorText, sexText, textProblem, upsertErrorText, valueTypeText
 } from "./labTemplates";
 
 describe("rótulos", () => {
@@ -187,8 +187,30 @@ describe("erros das mutations", () => {
     expect(blank("material")).toBe("campo obrigatório vazio: Material");
     expect(blank("container")).toBe("campo obrigatório vazio: Recipiente");
     expect(blank("name", "analyte")).toBe("campo obrigatório vazio: Nome do componente");
-    expect(blank("somethingNew")).toBe("campo obrigatório vazio");
-    expect(blank(null)).toBe("campo obrigatório vazio");
+    expect(blank("somethingNew")).toBe("campo obrigatório vazio: um campo obrigatório");
+    expect(blank(null)).toBe("campo obrigatório vazio: um campo obrigatório");
+  });
+
+  it("limites novos do api em português", () => {
+    const one = (message: string) => upsertErrorText([ { path: "x", message } ]);
+    expect(one("invalid_name")).toBe("Nome: no máximo 120 caracteres");
+    expect(one("invalid_material")).toBe("Material: no máximo 60 caracteres");
+    expect(one("invalid_container")).toBe("Recipiente: no máximo 60 caracteres");
+    expect(one("invalid_suggested_method")).toBe("Método sugerido: no máximo 160 caracteres");
+    expect(one("invalid_unit")).toBe("Unidade: no máximo 30 caracteres");
+  });
+
+  it("número de 310+ dígitos é recusado, nunca vira null", () => {
+    expect(parseDecimal("9".repeat(308))).toBeTypeOf("number");
+    expect(parseDecimal("9".repeat(310))).toBeUndefined();
+    const huge = { sex: "male", ageMinDays: "0", ageMaxDays: "43800", low: "9".repeat(310), high: "", text: "" };
+    expect(draftsToRanges([ huge ])).toEqual({ error: 'faixa 1: "baixo" — número grande demais' });
+  });
+
+  it("ordem tem teto de Int do GraphQL", () => {
+    expect(positionProblem("2147483647")).toBeNull();
+    expect(positionProblem("2147483648")).toBe("ordem: no máximo 2147483647");
+    expect(positionProblem("-1")).toBe("ordem: use um número inteiro");
     expect(upsertErrorText([ { path: "name", message: "blank" } ])).not.toContain("name");
   });
 

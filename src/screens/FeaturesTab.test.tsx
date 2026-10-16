@@ -1005,6 +1005,28 @@ describe("FeaturesTab — laboratório municipal (módulo 21b)", () => {
     expect((await screen.findByRole("note", { name: "modo do middleware" })).textContent).toBe(FAKE_MIDDLEWARE_NOTICE);
   });
 
+  it("desligar fake_middleware: após o refetch o aviso some", async () => {
+    const user = userEvent.setup();
+    let listed = [ MW_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ MW_OFF ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: MW_OFF } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByRole("note", { name: "modo do middleware" })).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "desligar" }));
+    await user.click(await screen.findByRole("button", { name: "confirmar: desligar fake_middleware" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "fake_middleware", enabled: false });
+    await waitFor(() => expect(screen.queryByRole("note", { name: "modo do middleware" })).toBeNull());
+  });
+
   it("laboratório e middleware simulados ligados: dois avisos, cada um com seu nome", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ FAKE_LAB_ON, MW_ON ])));
     renderTab();
