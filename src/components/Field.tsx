@@ -33,7 +33,8 @@ export function Field({ label, value, onChange, type = "text", name, autoComplet
             type={type}
             name={name}
             value={value}
-            placeholder={placeholder} maxLength={maxLength}
+            placeholder={placeholder}
+            maxLength={maxLength}
             autoComplete={autoComplete}
             onChange={(event) => onChange(event.target.value)}
             style={style}

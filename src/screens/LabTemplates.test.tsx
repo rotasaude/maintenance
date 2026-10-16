@@ -245,16 +245,32 @@ describe("LabTemplates", () => {
     expect((await screen.findByRole("alert")).textContent).toMatch(/o api do módulo 21b precisa subir antes do maintenance/);
   });
 
-  it("falha de rede ao salvar: mostra o alerta, mantém o formulário e relê o catálogo", async () => {
+  it("falha de rede ao salvar: mostra o alerta, mantém o digitado e relê o catálogo", async () => {
+    const user = userEvent.setup();
+    route(fetchMock, {
+      "query LabExamTemplates": () => templatesReply(),
+      "mutation UpsertLabExamTemplate": () => Promise.reject(new TypeError("Failed to fetch"))
+    });
+    renderScreen();
+    await screen.findByText("Hemograma completo");
+    await user.click(within(rowOf("0202020380")).getByRole("button", { name: "editar" }));
+    await user.type(input("Preparo do paciente"), "sem jejum");
+    await user.click(within(form()).getByRole("button", { name: "salvar exame" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("sem conexão com a API");
+    expect(input("Nome").value).toBe("Hemograma completo");
+    expect(input("Preparo do paciente").value).toBe("sem jejum");
+    await waitFor(() => expect(calls(fetchMock, "query LabExamTemplates").length).toBeGreaterThanOrEqual(2));
+  });
+
+  it("api recusa a requisição (504): mostra a mensagem própria e mantém o formulário", async () => {
     const user = userEvent.setup();
     route(fetchMock, { "query LabExamTemplates": () => templatesReply(), "mutation UpsertLabExamTemplate": () => reply(504, {}) });
     renderScreen();
     await screen.findByText("Hemograma completo");
     await user.click(within(rowOf("0202020380")).getByRole("button", { name: "editar" }));
     await user.click(within(form()).getByRole("button", { name: "salvar exame" }));
-    expect(await screen.findByRole("alert")).not.toBeNull();
+    expect((await screen.findByRole("alert")).textContent).toBe("a API recusou a requisição");
     expect(input("Nome").value).toBe("Hemograma completo");
-    await waitFor(() => expect(calls(fetchMock, "query LabExamTemplates").length).toBeGreaterThanOrEqual(2));
   });
 
   it("limites do api: os campos limitam a digitação e um nome já longo demais não é enviado", async () => {
