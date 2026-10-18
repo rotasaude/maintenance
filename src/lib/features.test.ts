@@ -173,3 +173,20 @@ describe("módulo 21b", () => {
       .toBe("laboratório municipal (municipal_lab) desligado; entrada de resultados por HL7 (lab_hl7_inbound) desligada");
   });
 });
+
+describe("módulo 21c", () => {
+  it("as duas chaves do 21c têm nome em português", () => {
+    expect(featureLabel("lab_quality_control")).toBe("Controle de qualidade do laboratório (CIQ e CEQ)");
+    expect(featureLabel("lab_inventory")).toBe("Estoque do laboratório");
+  });
+
+  it("o pré-requisito das duas é a frase do 21b, sem redefinir", () => {
+    expect(missingText("municipal_lab_disabled")).toBe("laboratório municipal (municipal_lab) desligado");
+    expect(missingSummary([ "municipal_lab_disabled" ])).toBe("laboratório municipal (municipal_lab) desligado");
+  });
+
+  it("nenhuma das duas é pré-requisito da outra: não existe frase para elas como missing", () => {
+    expect(missingText("lab_quality_control_disabled")).toBe("lab_quality_control_disabled");
+    expect(missingText("lab_inventory_disabled")).toBe("lab_inventory_disabled");
+  });
+});

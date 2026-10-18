@@ -53,6 +53,8 @@ const MISSING_LABELS: Record<string, string> = {
   pec_external_view_disabled: "página para os sistemas externos do PEC (pec_external_view) desligada",
   // Módulo 21b: municipal_lab exige exam_tracking (frase acima);
   // lab_hl7_inbound exige municipal_lab; fake_middleware exige lab_hl7_inbound.
+  // Módulo 21c: lab_quality_control e lab_inventory exigem municipal_lab
+  // (municipal_lab_disabled, abaixo) e são independentes entre si.
   municipal_lab_disabled: "laboratório municipal (municipal_lab) desligado",
   lab_hl7_inbound_disabled: "entrada de resultados por HL7 (lab_hl7_inbound) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
@@ -77,7 +79,10 @@ const FEATURE_LABELS: Record<string, string> = {
   // Módulo 21b (ADR 0037): fake_middleware só existe fora de produção.
   municipal_lab: "Laboratório municipal (requisição, amostra, análise e laudo)",
   lab_hl7_inbound: "Entrada de resultados de aparelhos por HL7 (middleware)",
-  fake_middleware: "Middleware simulado (desenvolvimento)"
+  fake_middleware: "Middleware simulado (desenvolvimento)",
+  // Módulo 21c (ADR 0038): existem em todos os ambientes; nenhum é simulado.
+  lab_quality_control: "Controle de qualidade do laboratório (CIQ e CEQ)",
+  lab_inventory: "Estoque do laboratório"
 };
 
 export function featureLabel(key: string): string | null {
