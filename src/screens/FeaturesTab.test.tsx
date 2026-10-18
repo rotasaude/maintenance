@@ -1047,3 +1047,173 @@ describe("FeaturesTab — laboratório municipal (módulo 21b)", () => {
     expect(document.body.textContent).not.toMatch(/MIDDLEWARE SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — qualidade e estoque do laboratório (módulo 21c)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const LAB_ON: Feature = {
+    key: "municipal_lab", description: "Laboratório municipal: fluxo analítico", enabled: true, usable: true,
+    missing: [], changedAt: "2026-10-18T12:00:00Z", changedBy: "dev@local"
+  };
+  const QC_OFF: Feature = {
+    key: "lab_quality_control", description: "Controle de qualidade do laboratório: CIQ e CEQ", enabled: false, usable: false,
+    missing: [ "municipal_lab_disabled" ], changedAt: null, changedBy: null
+  };
+  const INV_OFF: Feature = {
+    key: "lab_inventory", description: "Estoque do laboratório: reagentes e insumos com lotes, lote em uso e consumo estimado", enabled: false, usable: false,
+    missing: [ "municipal_lab_disabled" ], changedAt: null, changedBy: null
+  };
+  const QC_ON: Feature = { ...QC_OFF, enabled: true, usable: true, missing: [], changedAt: "2026-10-18T13:00:00Z", changedBy: "dev@local" };
+  const INV_ON: Feature = { ...INV_OFF, enabled: true, usable: true, missing: [], changedAt: "2026-10-18T13:00:00Z", changedBy: "dev@local" };
+  const MW_ON: Feature = {
+    key: "fake_middleware", description: "Middleware simulado do compose de dev", enabled: true, usable: true,
+    missing: [], changedAt: "2026-10-18T13:00:00Z", changedBy: "dev@local"
+  };
+
+  it("os dois aparecem com nome em português e o pré-requisito do laboratório municipal", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ QC_OFF, INV_OFF ])));
+    renderTab();
+
+    expect(await screen.findByText("lab_quality_control")).not.toBeNull();
+    expect(screen.getByText("lab_inventory")).not.toBeNull();
+    expect(screen.getByText("Controle de qualidade do laboratório (CIQ e CEQ)")).not.toBeNull();
+    expect(screen.getByText("Estoque do laboratório")).not.toBeNull();
+    expect(screen.getAllByText("laboratório municipal (municipal_lab) desligado")).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/_disabled|undefined|null/);
+  });
+
+  it("lab_quality_control liga com dois cliques: sem o laboratório, ligada e com o que falta", async () => {
+    const user = userEvent.setup();
+    const turnedOn: Feature = { ...QC_OFF, enabled: true, changedAt: "2026-10-18T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ QC_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ turnedOn ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: turnedOn } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("lab_quality_control")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar lab_quality_control" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "lab_quality_control", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "lab_quality_control ligada, mas ainda não utilizável — falta: laboratório municipal (municipal_lab) desligado."
+    );
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+  });
+
+  it("lab_inventory liga com dois cliques: com o laboratório ligado, utilizável", async () => {
+    const user = userEvent.setup();
+    let listed = [ LAB_ON, INV_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ LAB_ON, INV_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: INV_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("lab_inventory")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar lab_inventory" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "lab_inventory", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe("lab_inventory ligada e utilizável.");
+  });
+
+  it("desligar municipal_lab: depois do refetch os dois do 21c dizem o que falta", async () => {
+    const user = userEvent.setup();
+    const labOff: Feature = { ...LAB_ON, enabled: false, usable: false, missing: [], changedAt: "2026-10-18T14:00:00Z" };
+    let listed = [ LAB_ON, QC_ON, INV_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [
+          labOff,
+          { ...QC_ON, usable: false, missing: [ "municipal_lab_disabled" ] },
+          { ...INV_ON, usable: false, missing: [ "municipal_lab_disabled" ] }
+        ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: labOff } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("lab_quality_control")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(3);
+    await user.click(screen.getAllByRole("button", { name: "desligar" })[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar municipal_lab" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "municipal_lab", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("municipal_lab desligada.");
+    await waitFor(() => expect(screen.getAllByText("ligada, falta pré-requisito")).toHaveLength(2));
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(screen.getAllByText("laboratório municipal (municipal_lab) desligado")).toHaveLength(2);
+  });
+
+  it("independentes: estoque utilizável com o controle de qualidade desligado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      LAB_ON, { ...QC_OFF, missing: [] }, INV_ON
+    ])));
+    renderTab();
+
+    expect(await screen.findByText("lab_inventory")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(2);
+    expect(screen.getByText("desligada")).not.toBeNull();
+    // Nenhuma linha diz que falta o controle de qualidade, nem o laboratório.
+    expect(screen.queryByText(/municipal_lab\) desligado/)).toBeNull();
+    expect(document.body.textContent).not.toMatch(/lab_quality_control_disabled|\(lab_quality_control\) desligad/);
+  });
+
+  it("produção: os dois do 21c aparecem e nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ LAB_ON, QC_ON, INV_ON ])));
+    renderTab();
+
+    expect(await screen.findByText("lab_quality_control")).not.toBeNull();
+    expect(screen.getByText("lab_inventory")).not.toBeNull();
+    expect(screen.queryByText("fake_middleware")).toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+
+  it("código de missing desconhecido aparece cru ao lado do conhecido", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      { ...QC_OFF, enabled: true, missing: [ "municipal_lab_disabled", "lab_instrument_missing" ] }
+    ])));
+    renderTab();
+
+    expect(await screen.findByText(
+      "laboratório municipal (municipal_lab) desligado; lab_instrument_missing"
+    )).not.toBeNull();
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("com fake_middleware ligado, o aviso fala do controle de qualidade e do bloqueio", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ LAB_ON, QC_ON, MW_ON ])));
+    renderTab();
+
+    const note = await screen.findByRole("note", { name: "modo do middleware" });
+    expect(note.textContent).toBe(FAKE_MIDDLEWARE_NOTICE);
+    expect(note.textContent).toMatch(/corridas de controle de exemplo/);
+    expect(note.textContent).toMatch(/abre bloqueio de liberação/);
+  });
+});

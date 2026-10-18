@@ -194,6 +194,18 @@ vírgula e sem ponto de milhar. É o ponto de partida que cada laboratório adot
 e ajusta: mudar aqui não altera exame já adotado nem laudo. O SDL vem do api
 (`npm run schema:pull`, depois `npm run codegen`).
 
+**Qualidade e estoque do laboratório (módulo 21c).** Os interruptores
+`lab_quality_control` ("Controle de qualidade do laboratório", CIQ e CEQ) e
+`lab_inventory` ("Estoque do laboratório") exigem `municipal_lab` e são
+independentes entre si; aparecem na mesma lista, em todos os ambientes, e
+ligam como os outros, com o que falta em português. Aparelhos, materiais e
+lotes de controle, corridas, bloqueios, exceções, CEQ e estoque são do
+laboratório da cidade, no dashboard; nenhum valor de controle ou de resultado
+passa por aqui. Com `fake_middleware` ligado (só em development), o aviso diz
+que o simulado também manda corridas de controle de exemplo e que uma corrida
+reprovada de exemplo abre bloqueio de liberação. Ordem de deploy: api →
+dashboard → maintenance; contra um api sem o 21c as chaves só não aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
