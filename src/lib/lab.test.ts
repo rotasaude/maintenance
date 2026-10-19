@@ -19,7 +19,7 @@ describe("fakeMiddlewareOn", () => {
 
   it("o aviso do middleware menciona as corridas de controle (21c) e o bloqueio, sem perder o que já dizia", () => {
     expect(FAKE_MIDDLEWARE_NOTICE).toMatch(/corridas de controle de exemplo/);
-    expect(FAKE_MIDDLEWARE_NOTICE).toMatch(/abre bloqueio de liberação/);
+    expect(FAKE_MIDDLEWARE_NOTICE).toMatch(/reprovada de exemplo, enviada só sob demanda, abre bloqueio de liberação/);
     expect(FAKE_MIDDLEWARE_NOTICE).toMatch(/^Esta cidade recebe resultados do MIDDLEWARE SIMULADO — /);
     expect(FAKE_MIDDLEWARE_NOTICE).toMatch(/sem validade clínica \(fora de produção\)/);
     expect(FAKE_MIDDLEWARE_NOTICE).toMatch(/nenhum valor sai do laboratório sem o liberador\.$/);
