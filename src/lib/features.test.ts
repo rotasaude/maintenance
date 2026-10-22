@@ -190,3 +190,20 @@ describe("módulo 21c", () => {
     expect(missingText("lab_inventory_disabled")).toBe("lab_inventory_disabled");
   });
 });
+
+describe("módulo 22", () => {
+  it("procedure_billing tem nome em português, o mesmo do dashboard", () => {
+    expect(featureLabel("procedure_billing")).toBe("Faturamento de procedimentos (BPA)");
+  });
+
+  it("o api exige o IBGE da cidade (M1): a frase é a do módulo 16, sem redefinir", () => {
+    expect(missingText("ibge_code_missing")).toBe("código IBGE não preenchido");
+    expect(missingSummary([ "ibge_code_missing" ])).toBe("código IBGE não preenchido");
+  });
+
+  it("não há frase de pré-requisito de modo para o faturamento: código assim apareceria cru", () => {
+    // spec §3: sem pré-requisito de modo de prontuário.
+    expect(missingText("procedure_billing_disabled")).toBe("procedure_billing_disabled");
+    expect(missingText("billing_settings_missing")).toBe("billing_settings_missing");
+  });
+});

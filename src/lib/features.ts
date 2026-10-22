@@ -82,7 +82,10 @@ const FEATURE_LABELS: Record<string, string> = {
   fake_middleware: "Middleware simulado (desenvolvimento)",
   // Módulo 21c (ADR 0038): existem em todos os ambientes; nenhum é simulado.
   lab_quality_control: "Controle de qualidade do laboratório (CIQ e CEQ)",
-  lab_inventory: "Estoque do laboratório"
+  lab_inventory: "Estoque do laboratório",
+  // Módulo 22 (ADR 0039): sem pré-requisito de modo de prontuário; exige o IBGE
+  // da cidade (frase de ibge_code_missing, acima); todos os ambientes, sem simulado.
+  procedure_billing: "Faturamento de procedimentos (BPA)"
 };
 
 export function featureLabel(key: string): string | null {
