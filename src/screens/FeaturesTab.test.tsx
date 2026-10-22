@@ -1217,3 +1217,118 @@ describe("FeaturesTab — qualidade e estoque do laboratório (módulo 21c)", ()
     expect(note.textContent).toMatch(/abre bloqueio de liberação/);
   });
 });
+
+describe("FeaturesTab — faturamento de procedimentos (módulo 22)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const PB_OFF: Feature = {
+    key: "procedure_billing", description: "Faturamento de procedimentos (BPA): procedimentos realizados com crítica SIGTAP e arquivo BPA-I/BPA-C", enabled: false,
+    usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const PB_ON: Feature = { ...PB_OFF, enabled: true, usable: true, changedAt: "2026-10-21T13:00:00Z", changedBy: "dev@local" };
+
+  async function turnOn(recordMode: string) {
+    const user = userEvent.setup();
+    let listed = [ PB_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ PB_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: PB_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode }));
+    });
+    renderTab();
+    expect(await screen.findByText("procedure_billing")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar procedure_billing" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "procedure_billing", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe("procedure_billing ligada e utilizável.");
+  }
+
+  it("aparece com o nome em português e sem pré-requisito", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ PB_OFF ])));
+    renderTab();
+
+    expect(await screen.findByText("procedure_billing")).not.toBeNull();
+    expect(screen.getByText("Faturamento de procedimentos (BPA)")).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(screen.getByText("nada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/_disabled|undefined|null/);
+  });
+
+  it("liga utilizável com o modo off e com o integrated: o modo não é pré-requisito", async () => {
+    await turnOn("off");
+    expect(screen.getByText("desligado (off)")).not.toBeNull();
+    cleanup();
+    fetchMock.mockReset();
+    await turnOn("integrated");
+    expect(screen.getByText("integrado ao PEC da cidade (integrated)")).not.toBeNull();
+    expect(screen.queryByText("ligada, falta pré-requisito")).toBeNull();
+  });
+
+  it("sem IBGE: ligada, falta o código IBGE, com a frase do módulo 16", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply(
+      [ { ...PB_ON, usable: false, missing: [ "ibge_code_missing" ] } ], { profile: { ibgeCode: null } }
+    )));
+    renderTab();
+
+    expect(await screen.findByText("procedure_billing")).not.toBeNull();
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getByText("código IBGE não preenchido")).not.toBeNull();
+    expect(screen.getByText("não preenchido")).not.toBeNull();
+  });
+
+  it("desliga com dois cliques e diz o estado devolvido", async () => {
+    const user = userEvent.setup();
+    let listed = [ PB_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ { ...PB_OFF, changedAt: "2026-10-21T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("ligada e utilizável")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar procedure_billing" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "procedure_billing", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("procedure_billing desligada.");
+    expect(await screen.findByText("desligada")).not.toBeNull();
+  });
+
+  it("produção: o interruptor aparece e nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ PB_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("procedure_billing")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+
+  it("código de missing desconhecido aparece cru ao lado do conhecido", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      { ...PB_ON, usable: false, missing: [ "ibge_code_missing", "billing_settings_missing" ] }
+    ])));
+    renderTab();
+
+    expect(await screen.findByText("código IBGE não preenchido; billing_settings_missing")).not.toBeNull();
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+});

@@ -206,6 +206,18 @@ que o simulado também manda corridas de controle de exemplo e que uma corrida
 reprovada de exemplo abre bloqueio de liberação. Ordem de deploy: api →
 dashboard → maintenance; contra um api sem o 21c as chaves só não aparecem.
 
+**Faturamento de procedimentos (módulo 22).** O interruptor
+`procedure_billing` ("Faturamento de procedimentos (BPA)") liga o registro do
+procedimento realizado com as críticas da SIGTAP, o fechamento da competência
+e o arquivo do BPA Magnético. Não depende do modo de prontuário (vale com
+`off`, `integrated` ou `record`), existe em todos os ambientes e não tem
+simulado. Exige o código IBGE da cidade (o arquivo leva o município de
+residência): a linha diz "código IBGE não preenchido" até o perfil ter o
+código. A configuração do arquivo (órgão de origem e de destino, gestão) e o
+papel de faturista são da cidade, no dashboard; nenhum dado de paciente nem o
+arquivo passam por aqui. Ordem de deploy: api → dashboard → maintenance;
+contra um api sem o 22 a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
