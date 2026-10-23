@@ -15,7 +15,7 @@ import { graphql } from "../gql";
 import { GraphQLRefusal } from "../lib/errors";
 import { fmtWhen } from "../lib/analytics";
 import {
-  KEYS, advancedText, currentTemplates, draftProblem, draftToVariables, eligibilityText, firstDraft, indicatorOf, keyOrder, keyText, pointsTotal,
+  KEYS, advancedText, conditionText, currentTemplates, draftProblem, draftToVariables, eligibilityText, firstDraft, indicatorOf, keyOrder, keyText, pointsTotal,
   ruleText, toDraft, upsertErrorText, versionsOf, type TemplateDraft, type TemplateView
 } from "../lib/careLineTemplates";
 import { Panel } from "../components/Panel";
@@ -168,7 +168,7 @@ export function CareLineTemplates() {
                     <span style={muted}>{t.createdBy ? `por ${t.createdBy}` : "carga inicial"}</span>
                   </div>
                   <p style={{ ...muted, margin: "4px 0" }}>{eligibilityText(t.eligibility)}</p>
-                  {suggestsLine(t) && <p style={{ ...muted, margin: "4px 0" }}>{`sugere a linha: ${t.declaredCondition}`}</p>}
+                  {suggestsLine(t) && <p style={{ ...muted, margin: "4px 0" }}>{`sugere a linha: ${conditionText(t.declaredCondition ?? "")}`}</p>}
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {t.practices.map((p) => {
                       const advanced = advancedText(p);

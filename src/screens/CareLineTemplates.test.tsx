@@ -44,7 +44,7 @@ describe("CareLineTemplates", () => {
     )).not.toBeNull();
     await user.click(within(screen.getByRole("row", { name: /C3 — Gestante e puérpera/ })).getByRole("button", { name: "versões" }));
     const c3 = screen.getByRole("region", { name: "Versões de C3 — Gestante e puérpera" });
-    expect(within(c3).getByText("regras avançadas (preservadas na versão nova): todas de: procedure:0214010074 | procedure:0214010040")).not.toBeNull();
+    expect(within(c3).getByText("regras avançadas (preservadas na versão nova): todas de: procedimento SIGTAP 0214010074 | procedimento SIGTAP 0214010040")).not.toBeNull();
   });
 
   it("histórico: o autor da versão ('por <e-mail>') ou 'carga inicial' quando não há", async () => {
@@ -69,7 +69,7 @@ describe("CareLineTemplates", () => {
     expect(within(screen.getByRole("region", { name: "Versões de C6 — Pessoa idosa" })).getByText("a partir de 60 anos")).not.toBeNull();
     await user.click(within(screen.getByRole("row", { name: /C7 — Mulher/ })).getByRole("button", { name: "versões" }));
     expect(within(screen.getByRole("region", { name: "Versões de C7 — Mulher e prevenção do câncer" }))
-      .getByText("exceto CIAP-2 X37 · de 25 a 64 anos · sexo feminino · inclui: trans_man")).not.toBeNull();
+      .getByText("exceto CIAP-2 X37 · de 25 a 64 anos · sexo feminino · inclui: homem trans")).not.toBeNull();
   });
 
   it("pontos inteiros: a soma sai sem casas decimais", async () => {
@@ -95,7 +95,7 @@ describe("CareLineTemplates", () => {
     await user.click(await within(await screen.findByRole("row", { name: /C4 — Pessoa com diabetes/ })).findByRole("button", { name: "versões" }));
     const [ v2, v1 ] = within(screen.getByRole("region", { name: "Versões de C4 — Pessoa com diabetes" })).getAllByRole("listitem")
       .filter((li) => li.getAttribute("data-version"));
-    expect(within(v2).getByText("sugere a linha: hypertension")).not.toBeNull();
+    expect(within(v2).getByText("sugere a linha: hipertensão")).not.toBeNull();
     expect(within(v1).queryByText(/sugere a linha/)).toBeNull();
   });
 

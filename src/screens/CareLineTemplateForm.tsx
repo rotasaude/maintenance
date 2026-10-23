@@ -11,7 +11,7 @@ import { useState } from "react";
 import { optionsWith } from "../lib/labTemplates";
 import {
   ANCHORS, CODED, SCHEDULES, SEXES, SOURCE_KINDS, advancedText, anchorText, changeSource, emptyPractice, indicatorOf, keyText, pointsTotal,
-  scheduleText, sexText, sourceKindText, type PracticeDraft, type TemplateDraft
+  conditionText, genderIdentityText, scheduleText, sexText, sourceKindText, type PracticeDraft, type TemplateDraft
 } from "../lib/careLineTemplates";
 import { Panel } from "../components/Panel";
 import { Button } from "../components/Button";
@@ -20,9 +20,6 @@ import { Field } from "../components/Field";
 import { checkStyle, grid, inputStyle, labelStyle, muted, row } from "./LabTemplates";
 
 const NOTICE = "A versão nova só vale para a cidade que a adotar; as inscrições das cidades não mudam até lá.";
-const CONDITION_TEXT: Record<string, string> = {
-  "": "nenhuma", diabetes: "diabetes", hypertension: "hipertensão", pregnancy: "gestação", mental_health: "saúde mental"
-};
 
 export type Outcome = { tone: "done" | "failed"; text: string };
 
@@ -43,9 +40,9 @@ export function CareLineTemplateForm({ draft: initial, fromVersion, busy, outcom
   const total = pointsTotal(d.practices.map((p) => ({ points: /^\d+$/.test(p.points.trim()) ? Number(p.points.trim()) : null })));
   const declared = d.preserved.declared ?? [];
   const preserved = [
-    d.preserved.gender_identities_included?.length ? `inclui: ${d.preserved.gender_identities_included.join(", ")}` : null,
-    d.preserved.gender_identities_excluded?.length ? `exclui: ${d.preserved.gender_identities_excluded.join(", ")}` : null,
-    declared.length ? `condição declarada: ${declared.join(", ")}` : null
+    d.preserved.gender_identities_included?.length ? `inclui: ${d.preserved.gender_identities_included.map(genderIdentityText).join(", ")}` : null,
+    d.preserved.gender_identities_excluded?.length ? `exclui: ${d.preserved.gender_identities_excluded.map(genderIdentityText).join(", ")}` : null,
+    declared.length ? `condição declarada: ${declared.map(conditionText).join(", ")}` : null
   ].filter((x): x is string => x !== null);
 
   const select = (label: string, value: string, options: readonly string[], text: (o: string) => string, onChange: (v: string) => void, help?: string) => (
@@ -73,7 +70,7 @@ export function CareLineTemplateForm({ draft: initial, fromVersion, busy, outcom
             </label>
             <small style={{ color: "var(--ink3)", fontSize: 11 }}>o da linha; não muda</small>
           </div>
-          {select("Condição declarada que sugere a linha", d.declaredCondition, [ "", ...declared ], (o) => CONDITION_TEXT[o] ?? o, set("declaredCondition"),
+          {select("Condição declarada que sugere a linha", d.declaredCondition, [ "", ...declared ], conditionText, set("declaredCondition"),
             "só vale uma das condições de entrada (eligibility.declared) desta versão")}
         </div>
         <fieldset aria-label="Elegibilidade" style={fieldsetStyle}>

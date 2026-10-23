@@ -42,6 +42,18 @@ export function keyText(key: string): string {
 export function indicatorOf(key: string): string { return KEY_INFO[key]?.indicator ?? ""; }
 
 export const CONDITIONS = [ "", "diabetes", "hypertension", "pregnancy", "mental_health" ] as const;
+const CONDITION_LABELS: Record<string, string> = {
+  "": "nenhuma", diabetes: "diabetes", hypertension: "hipertensão", pregnancy: "gestação", mental_health: "saúde mental"
+};
+export function conditionText(code: string): string { return Object.hasOwn(CONDITION_LABELS, code) ? CONDITION_LABELS[code] : code; }
+
+// Os 7 códigos de Citizen::GENDER_IDENTITIES do api (citizen.rb), em termos respeitosos.
+export const GENDER_IDENTITIES = [ "cis_woman", "cis_man", "trans_woman", "trans_man", "travesti", "non_binary", "other" ] as const;
+const GENDER_IDENTITY_LABELS: Record<string, string> = {
+  cis_woman: "mulher cis", cis_man: "homem cis", trans_woman: "mulher trans", trans_man: "homem trans", travesti: "travesti",
+  non_binary: "pessoa não binária", other: "outra identidade"
+};
+export function genderIdentityText(code: string): string { return Object.hasOwn(GENDER_IDENTITY_LABELS, code) ? GENDER_IDENTITY_LABELS[code] : code; }
 
 export const SOURCE_KINDS = [ "consultation", "blood_pressure", "weight_height", "exam", "procedure", "acs_visit", "vaccine", "oral_health" ] as const;
 const SOURCE_KIND_LABELS: Record<string, string> = {
@@ -93,7 +105,7 @@ export function ruleText(p: PracticeJson): string {
 export function advancedText(p: PracticeJson): string | null {
   const parts: string[] = [];
   if (p.all_of && p.all_of.length > 0) {
-    const alt = (a: { source: string; window_days?: number }) => (a.window_days ? `${a.source} (${a.window_days} dias)` : a.source);
+    const alt = (a: { source: string; window_days?: number }) => (a.window_days ? `${sourceText(a.source)} em ${a.window_days} dias` : sourceText(a.source));
     parts.push(`todas de: ${p.all_of.map((g) => g.map(alt).join(" ou ")).join(" | ")}`);
   }
   const codes = [ ...(p.code_filter?.ciap2 ?? []), ...(p.code_filter?.cid10 ?? []) ];
@@ -118,9 +130,9 @@ export function eligibilityText(e: EligibilityJson): string {
   const years = range(e.age_min_years, e.age_max_years, "anos", `até ${e.age_max_years} anos`);
   if (years) parts.push(years);
   if (e.sex) parts.push(`sexo ${sexText(e.sex)}`);
-  if (e.gender_identities_included?.length) parts.push(`inclui: ${e.gender_identities_included.join(", ")}`);
-  if (e.gender_identities_excluded?.length) parts.push(`exclui: ${e.gender_identities_excluded.join(", ")}`);
-  if (e.declared?.length) parts.push(`condição declarada: ${e.declared.join(", ")}`);
+  if (e.gender_identities_included?.length) parts.push(`inclui: ${e.gender_identities_included.map(genderIdentityText).join(", ")}`);
+  if (e.gender_identities_excluded?.length) parts.push(`exclui: ${e.gender_identities_excluded.map(genderIdentityText).join(", ")}`);
+  if (e.declared?.length) parts.push(`condição declarada: ${e.declared.map(conditionText).join(", ")}`);
   if (e.requires_anchor === "lmp") parts.push("pede a DUM");
   return parts.length > 0 ? parts.join(" · ") : "sem critério de entrada";
 }
@@ -387,11 +399,32 @@ const UPSERT_ERRORS: Record<string, string> = {
 };
 const NAMED_PATHS = new Set([ "key", "indicator", "name", "declaredCondition" ]);
 
-// O api conta as boas práticas de 0 (`practices[1].window_days`); a tela, de 1.
+// Campos que o api cita nos caminhos (`Rules`); campo novo de um api mais novo deixa o caminho cru.
+const ELIGIBILITY_FIELDS: Record<string, string> = {
+  problems: "problemas", exclude_problems: "problemas excluídos", sex: "sexo", declared: "condições declaradas", requires_anchor: "DUM",
+  gender_identities_included: "identidades incluídas", gender_identities_excluded: "identidades excluídas",
+  age_min_days: "idade mínima em dias", age_max_days: "idade máxima em dias", age_min_years: "idade mínima em anos", age_max_years: "idade máxima em anos"
+};
+const PRACTICE_FIELDS: Record<string, string> = {
+  key: "chave", label: "o que conta", citizen_label: "texto para o cidadão", source: "fonte", anchor: "âncora", window_start_days: "início da janela",
+  window_days: "fim da janela", min_count: "quantidade mínima", schedule: "cronograma", cbo_filter: "CBO", code_filter: "filtro por código",
+  applies_to: "vale para", all_of: "alternativas", points: "pontos"
+};
+const known = (table: Record<string, string>, field: string) => (Object.hasOwn(table, field) ? table[field] : null);
+
+// O api conta as boas práticas de 0 (`practices[1].window_days`); a tela, de 1. Caminho desconhecido continua cru.
 function pathText(path: string): string {
-  const m = /^practices\[(\d+)\](?:\.(.+))?$/.exec(path);
+  if (path === "practices") return "boas práticas";
+  if (path === "practices.points") return "pontos";
+  if (path === "eligibility") return "entrada";
+  const elig = /^eligibility\.(\w+)$/.exec(path);
+  if (elig) { const label = known(ELIGIBILITY_FIELDS, elig[1]); return label ? `entrada: ${label}` : path; }
+  const m = /^practices\[(\d+)\](?:\.(\w+))?$/.exec(path);
   if (!m) return path;
-  return m[2] ? `boa prática ${Number(m[1]) + 1} (${m[2]})` : `boa prática ${Number(m[1]) + 1}`;
+  const n = `boa prática ${Number(m[1]) + 1}`;
+  if (!m[2]) return n;
+  const label = known(PRACTICE_FIELDS, m[2]);
+  return label ? `${n} (${label})` : path;
 }
 
 export function upsertErrorText(errors: { path?: string | null; message: string }[]): string {
@@ -400,6 +433,7 @@ export function upsertErrorText(errors: { path?: string | null; message: string 
     if (!Object.hasOwn(UPSERT_ERRORS, e.message)) return e.message;
     const phrase = UPSERT_ERRORS[e.message];
     if (!e.path || NAMED_PATHS.has(e.path)) return phrase;
-    return e.message === "invalid_practices" && e.path.startsWith("practices[") ? `boas práticas inválidas — confira a ${pathText(e.path)}` : `${phrase} (${e.path})`;
+    const where = pathText(e.path);
+    return e.message === "invalid_practices" && where.startsWith("boa prática ") ? `boas práticas inválidas — confira a ${where}` : `${phrase} (${where})`;
   }).join("; ");
 }

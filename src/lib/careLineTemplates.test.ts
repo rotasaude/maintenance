@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CODED, KEYS, advancedText, anchorText, changeSource, currentTemplates, draftProblem, draftToVariables, eligibilityText, emptyPractice,
+  CODED, KEYS, GENDER_IDENTITIES, conditionText, genderIdentityText, advancedText, anchorText, changeSource, currentTemplates, draftProblem, draftToVariables, eligibilityText, emptyPractice,
   firstDraft, indicatorOf, keyText, pointsTotal, ruleText, scheduleText, sexText, sourceKindText, sourceText, toDraft, upsertErrorText,
   versionsOf, type EligibilityJson, type PracticeJson, type TemplateDraft, type TemplateView
 } from "./careLineTemplates";
@@ -136,13 +136,27 @@ describe("rótulos", () => {
     expect(ruleText({ ...C4_E, window_start_days: 196, window_days: 294, anchor: "lmp", min_count: 7, schedule: "proportional", points: 9 }))
       .toBe("exame SIGTAP 0202010503 (pedido ou resultado) · 7× do dia 196 ao 294, proporcional ao tempo · desde a DUM · 9 pontos");
     expect(ruleText(C2[3])).toBe("visita do ACS (não acompanhada pelo sistema) · 2× em 180 dias, até o fim da janela · desde o nascimento · 20 pontos");
-    expect(advancedText(C3[6])).toBe("todas de: procedure:0214010074 ou exam:0202031098 | procedure:0214010040 ou exam:0213010780");
-    expect(advancedText(C7[0])).toBe("todas de: exam:0203010086 ou procedure:0201020033 ou exam:0202100251 (1826 dias) · vale de 25 a 64 anos");
+    expect(advancedText(C3[6])).toBe("todas de: procedimento SIGTAP 0214010074 ou exame SIGTAP 0202031098 (pedido ou resultado) | procedimento SIGTAP 0214010040 ou exame SIGTAP 0213010780 (pedido ou resultado)");
+    expect(advancedText(C7[0])).toBe("todas de: exame SIGTAP 0203010086 (pedido ou resultado) ou procedimento SIGTAP 0201020033 ou exame SIGTAP 0202100251 (pedido ou resultado) em 1826 dias · vale de 25 a 64 anos");
+    // alternativa de fonte desconhecida (api mais novo) continua crua
+    expect(advancedText({ ...C4_A, all_of: [ [ { source: "teleconsulta:9" }, { source: "vaccine:57" } ] ] }))
+      .toBe("todas de: teleconsulta:9 ou vacina 57 (não acompanhada pelo sistema)");
     expect(advancedText({ ...C4_A, code_filter: { cid10: [ "Z32" ] }, applies_to: { age_min_years: 14, age_max_years: 69 } }))
       .toBe("só com código: Z32 · vale de 14 a 69 anos");
     expect(advancedText(C7[1])).toBe("vale de 9 a 14 anos · só sexo feminino");
     expect(advancedText(C4_A)).toBeNull();
     expect(advancedText({ ...C4_A, all_of: null, code_filter: null, applies_to: null })).toBeNull();
+  });
+
+  it("condições e identidades de gênero: termos em português; código desconhecido cru", () => {
+    expect([ "", "diabetes", "hypertension", "pregnancy", "mental_health" ].map(conditionText))
+      .toEqual([ "nenhuma", "diabetes", "hipertensão", "gestação", "saúde mental" ]);
+    expect(conditionText("futura")).toBe("futura");
+    // os 7 códigos de Citizen::GENDER_IDENTITIES do api (citizen.rb)
+    expect([ ...GENDER_IDENTITIES ]).toEqual([ "cis_woman", "cis_man", "trans_woman", "trans_man", "travesti", "non_binary", "other" ]);
+    expect(GENDER_IDENTITIES.map(genderIdentityText)).toEqual([
+      "mulher cis", "homem cis", "mulher trans", "homem trans", "travesti", "pessoa não binária", "outra identidade" ]);
+    expect(genderIdentityText("futura_id")).toBe("futura_id");
   });
 
   it("elegibilidade: formas reais do catálogo, sem lista vazia nem chave obrigatória", () => {
@@ -153,7 +167,9 @@ describe("rótulos", () => {
     expect(eligibilityText({ problems: { ciap2: [ "W78" ] }, exclude_problems: { ciap2: [ "W82" ] }, requires_anchor: "lmp" }))
       .toBe("CIAP-2 W78 · exceto CIAP-2 W82 · pede a DUM");
     expect(eligibilityText({ problems: { cid10: [ "E10" ] }, exclude_problems: { cid10: [ "E11" ] } })).toBe("CID-10 E10 · exceto CID-10 E11");
-    expect(eligibilityText(C7_ELIG)).toBe("de 9 a 69 anos · sexo feminino · inclui: trans_man · exclui: trans_woman");
+    expect(eligibilityText(C7_ELIG)).toBe("de 9 a 69 anos · sexo feminino · inclui: homem trans · exclui: mulher trans");
+    expect(eligibilityText({ declared: [ "diabetes", "hypertension" ] })).toBe("condição declarada: diabetes, hipertensão");
+    expect(eligibilityText({ declared: [ "futura" ], gender_identities_included: [ "futura_id" ] })).toBe("inclui: futura_id · condição declarada: futura");
     expect(eligibilityText({ problems: { ciap2: [], cid10: [] }, age_max_days: 730 })).toBe("até 730 dias de vida");
     expect(eligibilityText({})).toBe("sem critério de entrada");
   });
@@ -417,14 +433,29 @@ describe("recusa o que o api recusaria (e só isso)", () => {
 describe("frases das recusas do api, com o campo; desconhecido cru", () => {
   it("cobre os códigos do Save e do Rules, inclusive condição declarada", () => {
     expect(upsertErrorText([ { path: "practices[1].window_days", message: "invalid_practices" } ]))
-      .toBe("boas práticas inválidas — confira a boa prática 2 (window_days)");
+      .toBe("boas práticas inválidas — confira a boa prática 2 (fim da janela)");
     expect(upsertErrorText([ { path: "practices[0].cbo_filter", message: "invalid_practices" } ]))
-      .toBe("boas práticas inválidas — confira a boa prática 1 (cbo_filter)");
+      .toBe("boas práticas inválidas — confira a boa prática 1 (CBO)");
     expect(upsertErrorText([ { path: "practices[11]", message: "invalid_practices" } ])).toBe("boas práticas inválidas — confira a boa prática 12");
     expect(upsertErrorText([ { path: "practices.points", message: "invalid_practices" } ]))
-      .toBe("boas práticas inválidas — confira os campos (practices.points)");
+      .toBe("boas práticas inválidas — confira os campos (pontos)");
+    expect(upsertErrorText([ { path: "practices", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira os campos (boas práticas)");
     expect(upsertErrorText([ { path: "eligibility.sex", message: "invalid_eligibility" } ]))
-      .toBe("elegibilidade inválida — confira os códigos e as idades (eligibility.sex)");
+      .toBe("elegibilidade inválida — confira os códigos e as idades (entrada: sexo)");
+    expect(upsertErrorText([ { path: "eligibility.age_max_years", message: "invalid_eligibility" } ]))
+      .toBe("elegibilidade inválida — confira os códigos e as idades (entrada: idade máxima em anos)");
+    expect(upsertErrorText([ { path: "eligibility", message: "invalid_eligibility" } ]))
+      .toBe("elegibilidade inválida — confira os códigos e as idades (entrada)");
+    expect(upsertErrorText([ { path: "practices[2].key", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira a boa prática 3 (chave)");
+    // caminho desconhecido (api mais novo) continua cru
+    expect(upsertErrorText([ { path: "eligibility.futuro", message: "invalid_eligibility" } ]))
+      .toBe("elegibilidade inválida — confira os códigos e as idades (eligibility.futuro)");
+    expect(upsertErrorText([ { path: "practices[0].futuro", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira os campos (practices[0].futuro)");
+    expect(upsertErrorText([ { path: "outra.coisa", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira os campos (outra.coisa)");
     expect(upsertErrorText([ { path: "indicator", message: "invalid_indicator" } ])).toBe("indicador desconhecido — use C2 a C7");
     expect(upsertErrorText([ { path: "key", message: "invalid_key" } ])).toBe("linha desconhecida — atualize a tela");
     expect(upsertErrorText([ { path: "name", message: "invalid_name" } ])).toBe("nome inválido — de 1 a 120 caracteres");

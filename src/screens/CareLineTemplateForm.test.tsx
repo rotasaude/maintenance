@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { C2_V1, C3_FULL_ELIGIBILITY, C3_FULL_PRACTICES, C3_FULL_V1, C3_V1, C4_V1, C4_V2, renderScreen, reply } from "./CareLineTemplates.fixtures";
+import { C2_V1, C3_FULL_ELIGIBILITY, C3_FULL_PRACTICES, C3_FULL_V1, C3_V1, C4_V1, C4_V2, C7_V1, renderScreen, reply } from "./CareLineTemplates.fixtures";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -166,7 +166,7 @@ describe("CareLineTemplateForm", () => {
       { path: "practices[1].source", message: "invalid_practices" }, { path: null, message: "brand_new" } ] } } });
     await openNewVersion(user);
     await publish(user);
-    expect((await screen.findByRole("alert")).textContent).toBe("boas práticas inválidas — confira a boa prática 2 (source); brand_new");
+    expect((await screen.findByRole("alert")).textContent).toBe("boas práticas inválidas — confira a boa prática 2 (fonte); brand_new");
     expect(form()).not.toBeNull();
     expect(lists()).toHaveLength(1);
   });
@@ -236,5 +236,15 @@ describe("CareLineTemplateForm", () => {
     const alert = await screen.findByRole("alert");
     expect(form().contains(alert)).toBe(true);
     expect(alert.compareDocumentPosition(within(form()).getByRole("button", { name: "publicar versão" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("as regras avançadas preservadas aparecem com termos em português (identidades) e o código desconhecido cru", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation(() => Promise.resolve(reply(200, { data: { careLineTemplates: [
+      { ...C7_V1, eligibility: { ...C7_V1.eligibility, gender_identities_excluded: [ "trans_woman", "futura_id" ], declared: [ "diabetes" ] } } ] } })));
+    renderScreen();
+    await user.click(await within(await screen.findByRole("row", { name: /C7 — Mulher/ })).findByRole("button", { name: "versões" }));
+    await user.click(screen.getByRole("button", { name: "nova versão" }));
+    expect(within(form()).getByText("regras avançadas (preservadas): inclui: homem trans · exclui: mulher trans, futura_id · condição declarada: diabetes")).not.toBeNull();
   });
 });
