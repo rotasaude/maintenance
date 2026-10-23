@@ -207,3 +207,14 @@ describe("módulo 22", () => {
     expect(missingText("billing_settings_missing")).toBe("billing_settings_missing");
   });
 });
+
+describe("módulo 23", () => {
+  it("care_lines tem nome em português, o mesmo do dashboard", () => {
+    expect(featureLabel("care_lines")).toBe("Linhas de cuidado");
+  });
+
+  it("fixa o pré-requisito: o prontuário, com a frase do módulo 19, sem redefinir", () => {
+    expect(missingText("clinical_record_disabled")).toBe("prontuário da atenção primária (clinical_record) desligado");
+    expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+});

@@ -218,6 +218,19 @@ papel de faturista são da cidade, no dashboard; nenhum dado de paciente nem o
 arquivo passam por aqui. Ordem de deploy: api → dashboard → maintenance;
 contra um api sem o 22 a chave só não aparece.
 
+**Linhas de cuidado (módulo 23).** O interruptor `care_lines` ("Linhas de
+cuidado") liga o catálogo de linhas da cidade, as sugestões a confirmar, o
+painel da equipe com a busca ativa, a prévia de C2–C7 e, no wpda, a condição
+declarada e "Meu acompanhamento". Exige `clinical_record` (só cidades em modo
+`record`): sem ele, a linha diz "prontuário da atenção primária
+(clinical_record) desligado". Existe em todos os ambientes e não tem simulado.
+A tela **Linhas de cuidado** do trilho mantém o catálogo-base das seis linhas
+das notas metodológicas (C2 a C7) e publica versão nova; a versão nova só vale
+para a cidade que a adotar (no dashboard), e nenhuma inscrição muda até lá.
+Nenhum dado de cidadão passa por aqui. Ordem de deploy: api → dashboard e wpda
+→ maintenance; contra um api sem o 23, a chave não aparece e só a tela do
+catálogo-base cai.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

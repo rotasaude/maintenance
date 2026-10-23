@@ -1332,3 +1332,93 @@ describe("FeaturesTab — faturamento de procedimentos (módulo 22)", () => {
     expect(document.body.textContent).not.toMatch(/undefined|null/);
   });
 });
+
+describe("FeaturesTab — linhas de cuidado (módulo 23)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const CL_OFF: Feature = {
+    key: "care_lines",
+    description: "Linhas de cuidado: catálogo C2–C7, inscrição confirmada, busca ativa e prévia dos indicadores",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const CL_ON: Feature = { ...CL_OFF, enabled: true, usable: true, changedAt: "2026-10-22T13:00:00Z", changedBy: "dev@local" };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ CL_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("care_lines")).not.toBeNull();
+    expect(screen.getByText("Linhas de cuidado")).not.toBeNull();
+    expect(screen.getByText(CL_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("fixa o fluxo genérico para care_lines: sem clinical_record, ligada, falta o prontuário, com a frase do módulo 19", async () => {
+    const user = userEvent.setup();
+    const CL_BLOCKED: Feature = { ...CL_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ CL_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ CL_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: CL_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar care_lines" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "care_lines", enabled: true });
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull();
+  });
+
+  it("fixa o fluxo genérico para care_lines: com o prontuário, liga utilizável e desliga com dois cliques", async () => {
+    const user = userEvent.setup();
+    let listed = [ CL_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        const on = body.variables.enabled === true;
+        listed = [ on ? CL_ON : { ...CL_OFF, changedAt: "2026-10-22T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar care_lines" }));
+    expect((await screen.findByRole("status")).textContent).toBe("care_lines ligada e utilizável.");
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar care_lines" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "care_lines", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("care_lines desligada.");
+  });
+
+  it("fixa que care_lines não é simulada: ligada, não acrescenta aviso; o único é o da chave simulada", async () => {
+    const MW_ON_HERE: Feature = {
+      key: "fake_middleware", description: "Middleware simulado (desenvolvimento)", enabled: true, usable: true,
+      missing: [], changedAt: "2026-10-22T13:00:00Z", changedBy: "dev@local"
+    };
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ CL_ON, MW_ON_HERE ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("care_lines")).not.toBeNull();
+    const notes = screen.getAllByRole("note");
+    expect(notes).toHaveLength(1);
+    expect(notes[0].textContent).toBe(FAKE_MIDDLEWARE_NOTICE);
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+});

@@ -85,7 +85,10 @@ const FEATURE_LABELS: Record<string, string> = {
   lab_inventory: "Estoque do laboratório",
   // Módulo 22 (ADR 0039): sem pré-requisito de modo de prontuário; exige o IBGE
   // da cidade (frase de ibge_code_missing, acima); todos os ambientes, sem simulado.
-  procedure_billing: "Faturamento de procedimentos (BPA)"
+  procedure_billing: "Faturamento de procedimentos (BPA)",
+  // Módulo 23 (ADR 0040): exige clinical_record (missing:
+  // clinical_record_disabled, já traduzido acima); todos os ambientes, sem simulado.
+  care_lines: "Linhas de cuidado"
 };
 
 export function featureLabel(key: string): string | null {
