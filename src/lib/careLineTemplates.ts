@@ -162,7 +162,8 @@ export function pointsTotal(practices: { points?: number | null }[]): number {
 }
 
 // ─── Rascunho da versão nova ─────────────────────────────────────────────
-type Advanced = Pick<PracticeJson, "code_filter" | "applies_to" | "all_of">;
+// Avançados conhecidos e qualquer chave que um api mais novo mande: voltam iguais no envio.
+type Advanced = Pick<PracticeJson, "code_filter" | "applies_to" | "all_of"> & Record<string, unknown>;
 export type PracticeDraft = {
   key: string; label: string; citizenLabel: string; sourceKind: string; code: string; windowStartDays: string; windowDays: string;
   minCount: string; schedule: string; anchor: string; cboFilter: string; points: string; advanced: Advanced;
@@ -170,7 +171,8 @@ export type PracticeDraft = {
 export type TemplateDraft = {
   key: string; name: string; indicator: string; declaredCondition: string; ciap: string; cid10: string; excludeCiap: string;
   excludeCid10: string; ageMinYears: string; ageMaxYears: string; ageMinDays: string; ageMaxDays: string; sex: string;
-  requiresAnchor: string; preserved: Pick<EligibilityJson, "gender_identities_included" | "gender_identities_excluded" | "declared">;
+  requiresAnchor: string;
+  preserved: Pick<EligibilityJson, "gender_identities_included" | "gender_identities_excluded" | "declared"> & Record<string, unknown>;
   practices: PracticeDraft[];
 };
 export type TemplateVariables = {
@@ -194,9 +196,17 @@ export function changeSource(p: PracticeDraft, sourceKind: string): PracticeDraf
 
 const numText = (n: number | null | undefined) => (n == null ? "" : String(n));
 
+// Contar caracteres como o length do Ruby (pontos de código), não unidades UTF-16: um emoji vale 1.
+const charCount = (text: string) => [ ...text ].length;
+
+// O que a tela edita; o resto de cada boa prática e da elegibilidade é preservado sem editar.
 function practiceDraft(p: PracticeJson): PracticeDraft {
   const [ kind, code ] = splitSource(p.source);
-  const advanced: Advanced = {};
+  const {
+    key: _k, label: _l, citizen_label: _c, source: _s, anchor: _a, window_start_days: _w, window_days: _d, min_count: _m, schedule: _sc,
+    cbo_filter: _cbo, points: _p, code_filter: _cf, applies_to: _at, all_of: _ao, ...unknown
+  } = p;
+  const advanced: Advanced = { ...unknown };
   if (p.code_filter) advanced.code_filter = p.code_filter;
   if (p.applies_to) advanced.applies_to = p.applies_to;
   if (p.all_of) advanced.all_of = p.all_of;
@@ -210,7 +220,11 @@ function practiceDraft(p: PracticeJson): PracticeDraft {
 
 export function toDraft(t: TemplateView): TemplateDraft {
   const e = t.eligibility;
-  const preserved: TemplateDraft["preserved"] = {};
+  const {
+    problems: _p, exclude_problems: _x, age_min_days: _a, age_max_days: _b, age_min_years: _c, age_max_years: _d, sex: _s, requires_anchor: _r,
+    gender_identities_included: _gi, gender_identities_excluded: _ge, declared: _dc, ...unknown
+  } = e;
+  const preserved: TemplateDraft["preserved"] = { ...unknown };
   if (e.gender_identities_included?.length) preserved.gender_identities_included = e.gender_identities_included;
   if (e.gender_identities_excluded?.length) preserved.gender_identities_excluded = e.gender_identities_excluded;
   if (e.declared?.length) preserved.declared = e.declared;
@@ -268,8 +282,8 @@ function practiceProblem(p: PracticeDraft, n: string): string | null {
   const label = p.label.trim();
   if (!KEY_RE.test(p.key.trim())) return `${n}: chave com minúsculas, números e _ (de 1 a 40)`;
   if (!label) return `${n}: escreva o que conta`;
-  if (label.length > LIMITS.label) return `${n}: até ${LIMITS.label} caracteres`;
-  if (p.citizenLabel.trim().length > LIMITS.citizenLabel) return `${n}: texto para o cidadão até ${LIMITS.citizenLabel} caracteres`;
+  if (charCount(label) > LIMITS.label) return `${n}: até ${LIMITS.label} caracteres`;
+  if (charCount(p.citizenLabel.trim()) > LIMITS.citizenLabel) return `${n}: texto para o cidadão até ${LIMITS.citizenLabel} caracteres`;
   const code = p.code.trim();
   if (p.sourceKind === "exam" && !EXAM_RE.test(code)) return `${n}: exame com SIGTAP do grupo 02 (10 dígitos)`;
   if (p.sourceKind === "procedure" && !PROCEDURE_RE.test(code)) return `${n}: procedimento com SIGTAP de 10 dígitos`;
@@ -306,7 +320,7 @@ function practiceProblem(p: PracticeDraft, n: string): string | null {
 export function draftProblem(d: TemplateDraft): string | null {
   const name = d.name.trim();
   if (!name) return "Nome: obrigatório";
-  if (name.length > LIMITS.name) return `Nome: no máximo ${LIMITS.name} caracteres`;
+  if (charCount(name) > LIMITS.name) return `Nome: no máximo ${LIMITS.name} caracteres`;
   const codeProblem = codesProblem(d.ciap, CIAP_RE, "CIAP-2") ?? codesProblem(d.cid10, CID_RE, "CID-10")
     ?? codesProblem(d.excludeCiap, CIAP_RE, "CIAP-2") ?? codesProblem(d.excludeCid10, CID_RE, "CID-10");
   if (codeProblem) return codeProblem;

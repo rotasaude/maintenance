@@ -230,6 +230,17 @@ describe("rascunho e ida e volta", () => {
     expect(JSON.stringify(out)).not.toMatch(/\[\]|\{\}|null/);
   });
 
+  it("chave desconhecida (api mais novo) na elegibilidade e em cada boa prática volta igual no envio", () => {
+    const eligibility = { ...C4_ELIG, nova_regra: { limite: 3, lista: [ "a" ] }, outra: null } as unknown as EligibilityJson;
+    const practices = [ { ...C4_A, points: 85, nova_chave: "x", future_flag: true }, { ...C4_E, points: 15, extra: [ 1, 2 ] } ] as unknown as PracticeJson[];
+    const original = t({ eligibility, practices });
+    const draft = toDraft(original);
+    expect(draftProblem(draft)).toBeNull();
+    const out = draftToVariables(draft);
+    expect(out.eligibility).toEqual(eligibility);
+    expect(out.practices).toEqual(practices);
+  });
+
   it("só a terminologia preenchida vai; vazios fora; preservados voltam iguais", () => {
     const d = ok();
     expect(draftToVariables({ ...d, ciap: "", cid10: "e10" }).eligibility).toEqual({ problems: { cid10: [ "E10" ] }, declared: [ "diabetes" ] });
@@ -329,6 +340,17 @@ describe("recusa o que o api recusaria (e só isso)", () => {
     expect(set({ declaredCondition: "hypertension" })).toBe(PHRASE);
     expect(set({ declaredCondition: "diabetes" })).toBeNull();
     expect(set({ declaredCondition: "" })).toBeNull();
+  });
+
+  it("comprimento conta caracteres (como o length do Ruby), não unidades UTF-16: 120 emojis passam, 121 não", () => {
+    const emoji = (n: number) => "😀".repeat(n);
+    expect(emoji(120).length).toBe(240); // 240 unidades UTF-16, 120 caracteres
+    expect(set({ name: emoji(120) })).toBeNull();
+    expect(set({ name: emoji(121) })).toBe("Nome: no máximo 120 caracteres");
+    expect(practice({ label: emoji(120) })).toBeNull();
+    expect(practice({ label: emoji(121) })).toBe("boa prática 1: até 120 caracteres");
+    expect(practice({ citizenLabel: emoji(80) })).toBeNull();
+    expect(practice({ citizenLabel: emoji(81) })).toBe("boa prática 1: texto para o cidadão até 80 caracteres");
   });
 
   it("boa prática: chave, rótulos, fonte e código", () => {
