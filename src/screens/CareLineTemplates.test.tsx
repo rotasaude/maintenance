@@ -79,6 +79,26 @@ describe("CareLineTemplates", () => {
     expect(within(screen.getByRole("row", { name: /C4 — Pessoa com diabetes/ })).getByText("100")).not.toBeNull();
   });
 
+  it("pontos inteiros: uma versão que não soma 100 mostra a soma como está, sem vírgula", async () => {
+    listing([ { ...C4_V2, practices: [ C4_V2.practices[0] ] } ]);
+    renderScreen();
+    const r = await screen.findByRole("row", { name: /C4 — Pessoa com diabetes/ });
+    expect(within(r).getByText("85")).not.toBeNull();
+    expect(within(r).queryByText("100")).toBeNull();
+    expect(r.textContent).not.toMatch(/\d,\d/);
+  });
+
+  it("histórico: a condição que sugere a linha aparece quando difere da elegibilidade", async () => {
+    const user = userEvent.setup();
+    listing([ { ...C4_V2, declaredCondition: "hypertension" }, C4_V1 ]);
+    renderScreen();
+    await user.click(await within(await screen.findByRole("row", { name: /C4 — Pessoa com diabetes/ })).findByRole("button", { name: "versões" }));
+    const [ v2, v1 ] = within(screen.getByRole("region", { name: "Versões de C4 — Pessoa com diabetes" })).getAllByRole("listitem")
+      .filter((li) => li.getAttribute("data-version"));
+    expect(within(v2).getByText("sugere a linha: hypertension")).not.toBeNull();
+    expect(within(v1).queryByText(/sugere a linha/)).toBeNull();
+  });
+
   it("chave desconhecida do api aparece crua, sem 'primeira versão' nem 'nova versão'", async () => {
     const user = userEvent.setup();
     listing([ { ...C2_V1, key: "future_c9", indicator: "C9", name: "Futura" } ]);
@@ -88,6 +108,7 @@ describe("CareLineTemplates", () => {
     expect(within(r).queryByRole("button", { name: /primeira versão|nova versão/ })).toBeNull();
     await user.click(within(r).getByRole("button", { name: "versões" }));
     expect(screen.getByRole("region", { name: "Versões de future_c9" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "nova versão" })).toBeNull();
   });
 
   it("catálogo vazio: as seis chaves sem versão", async () => {

@@ -22,7 +22,7 @@ export const C4_V1 = { key: "diabetes_c4", version: 1, current: false, name: "Pe
   eligibility: ELIG, practices: [ { ...C4_A, points: 100 } ], createdAt: "2026-01-10T12:00:00Z", createdBy: null };
 export const C4_V2 = { ...C4_V1, version: 2, current: true, practices: [ C4_A, C4_E ], createdAt: "2026-10-20T13:00:00Z", createdBy: "mantenedor@rotasaude.app" };
 export const C3_V1 = { key: "pregnancy_c3", version: 1, current: true, name: "Gestante e puérpera", indicator: "C3", declaredCondition: "pregnancy",
-  eligibility: { problems: { ciap2: [ "W78" ], cid10: [ "Z34" ] }, exclude_problems: { ciap2: [ "W82" ], cid10: [] }, requires_anchor: "lmp" },
+  eligibility: { problems: { ciap2: [ "W78" ], cid10: [ "Z34" ] }, exclude_problems: { ciap2: [ "W82" ] }, declared: [ "pregnancy" ], requires_anchor: "lmp" },
   practices: [ { key: "c3_g", label: "Testes do 1º trimestre", source: "procedure:0214010074", anchor: "lmp", window_days: 97, min_count: 1,
     schedule: "end_of_window", cbo_filter: null, points: 100,
     all_of: [ [ { source: "procedure:0214010074" } ], [ { source: "procedure:0214010040" } ] ] } ],
