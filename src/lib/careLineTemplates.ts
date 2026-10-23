@@ -227,7 +227,8 @@ const EXAM_RE = /^02\d{8}$/;
 const PROCEDURE_RE = /^\d{10}$/;
 const VACCINE_RE = /^[a-z0-9_]{1,30}$/;
 const CBO_RE = /^\d{4,6}$/;
-const KEY_RE = /^[a-z][a-z0-9_]{0,39}$/;
+// Igual ao do api (Rules.practice): [a-z0-9_]{1,40}.
+const KEY_RE = /^[a-z0-9_]{1,40}$/;
 
 function intOf(raw: string): number | null {
   const t = raw.trim();
@@ -253,7 +254,7 @@ const INVALID_DECLARED = "condição declarada precisa estar entre as condiçõe
 
 function practiceProblem(p: PracticeDraft, n: string): string | null {
   const label = p.label.trim();
-  if (!KEY_RE.test(p.key.trim())) return `${n}: chave começa com letra; minúsculas, números e _ (até 40)`;
+  if (!KEY_RE.test(p.key.trim())) return `${n}: chave com minúsculas, números e _ (de 1 a 40)`;
   if (!label) return `${n}: escreva o que conta`;
   if (label.length > LIMITS.label) return `${n}: até ${LIMITS.label} caracteres`;
   if (p.citizenLabel.trim().length > LIMITS.citizenLabel) return `${n}: texto para o cidadão até ${LIMITS.citizenLabel} caracteres`;
@@ -386,10 +387,19 @@ const UPSERT_ERRORS: Record<string, string> = {
 };
 const NAMED_PATHS = new Set([ "key", "indicator", "name", "declaredCondition" ]);
 
+// O api conta as boas práticas de 0 (`practices[1].window_days`); a tela, de 1.
+function pathText(path: string): string {
+  const m = /^practices\[(\d+)\](?:\.(.+))?$/.exec(path);
+  if (!m) return path;
+  return m[2] ? `boa prática ${Number(m[1]) + 1} (${m[2]})` : `boa prática ${Number(m[1]) + 1}`;
+}
+
 export function upsertErrorText(errors: { path?: string | null; message: string }[]): string {
   if (errors.length === 0) return "não foi possível concluir — tente de novo";
   return errors.map((e) => {
-    const phrase = UPSERT_ERRORS[e.message] ?? e.message;
-    return e.path && UPSERT_ERRORS[e.message] && !NAMED_PATHS.has(e.path) ? `${phrase} (${e.path})` : phrase;
+    if (!Object.hasOwn(UPSERT_ERRORS, e.message)) return e.message;
+    const phrase = UPSERT_ERRORS[e.message];
+    if (!e.path || NAMED_PATHS.has(e.path)) return phrase;
+    return e.message === "invalid_practices" && e.path.startsWith("practices[") ? `boas práticas inválidas — confira a ${pathText(e.path)}` : `${phrase} (${e.path})`;
   }).join("; ");
 }

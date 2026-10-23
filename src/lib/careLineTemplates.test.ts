@@ -5,7 +5,7 @@ import {
   versionsOf, type EligibilityJson, type PracticeJson, type TemplateDraft, type TemplateView
 } from "./careLineTemplates";
 
-// Formas REAIS do catalog-base.yml do api (sem chave nula, sem lista vazia).
+// Formas REAIS do catalog-base.yml do api (sem chave nula, sem lista vazia) — copiado de catalog-base.yml @454e502.
 const MD_NURSE = [ "2231", "2251", "2252", "2253", "2235" ];
 const P = (key: string, label: string, source: string, anchor: string, window_days: number, min_count: number, schedule: string,
   points: number, extra: Partial<PracticeJson> = {}): PracticeJson => ({ key, label, source, anchor, window_days, min_count, schedule, points, ...extra });
@@ -56,6 +56,15 @@ const C4: PracticeJson[] = [
   P("c4_f", "Avaliação dos pés em 12 meses", "procedure:0301040095", "rolling", 365, 1, "end_of_window", 15)
 ];
 
+const C5_ELIG: EligibilityJson = { problems: { ciap2: [ "K86", "K87" ], cid10: [ "I10", "I11", "I12", "I13", "I15", "O10", "O11" ] }, declared: [ "hypertension" ] };
+const C5: PracticeJson[] = [
+  P("c5_a", "Consulta com médico(a) ou enfermeiro(a) nos últimos 6 meses", "consultation", "rolling", 183, 1, "end_of_window", 25,
+    { citizen_label: "Consulta de acompanhamento", cbo_filter: MD_NURSE }),
+  P("c5_b", "Pressão arterial aferida nos últimos 6 meses", "blood_pressure", "rolling", 183, 1, "end_of_window", 25, { citizen_label: "Medir a pressão" }),
+  P("c5_c", "Peso e altura nos últimos 12 meses", "weight_height", "rolling", 365, 1, "end_of_window", 25, { citizen_label: "Medir peso e altura" }),
+  P("c5_d", "2 visitas do ACS nos últimos 12 meses", "acs_visit", "rolling", 365, 2, "end_of_window", 25)
+];
+
 const C6_ELIG: EligibilityJson = { age_min_years: 60 };
 const C6: PracticeJson[] = [
   P("c6_a", "Consulta em 12 meses", "consultation", "rolling", 365, 1, "end_of_window", 25, { cbo_filter: MD_NURSE }),
@@ -89,6 +98,7 @@ const REAL: Real[] = [
   { key: "child_c2", indicator: "C2", name: "Criança até 2 anos", declaredCondition: null, eligibility: C2_ELIG, practices: C2 },
   { key: "pregnancy_c3", indicator: "C3", name: "Gestante e puérpera", declaredCondition: "pregnancy", eligibility: C3_ELIG, practices: C3 },
   { key: "diabetes_c4", indicator: "C4", name: "Pessoa com diabetes", declaredCondition: "diabetes", eligibility: C4_ELIG, practices: C4 },
+  { key: "hypertension_c5", indicator: "C5", name: "Pessoa com hipertensão", declaredCondition: "hypertension", eligibility: C5_ELIG, practices: C5 },
   { key: "elderly_c6", indicator: "C6", name: "Pessoa idosa", declaredCondition: null, eligibility: C6_ELIG, practices: C6 },
   { key: "women_c7", indicator: "C7", name: "Mulher e prevenção do câncer", declaredCondition: null, eligibility: C7_ELIG, practices: C7 }
 ];
@@ -307,8 +317,12 @@ describe("recusa o que o api recusaria (e só isso)", () => {
 
   it("boa prática: chave, rótulos, fonte e código", () => {
     const d = ok();
-    expect(practice({ key: "Consulta" })).toBe("boa prática 1: chave começa com letra; minúsculas, números e _ (até 40)");
-    expect(practice({ key: "a".repeat(41) })).toBe("boa prática 1: chave começa com letra; minúsculas, números e _ (até 40)");
+    expect(practice({ key: "Consulta" })).toBe("boa prática 1: chave com minúsculas, números e _ (de 1 a 40)");
+    expect(practice({ key: "" })).toBe("boa prática 1: chave com minúsculas, números e _ (de 1 a 40)");
+    expect(practice({ key: "a-b" })).toBe("boa prática 1: chave com minúsculas, números e _ (de 1 a 40)");
+    // como o api: pode começar com número ou _ e pode ter 1 caractere
+    for (const ok of [ "1a", "_x", "a", "9".repeat(40) ]) expect(practice({ key: ok })).toBeNull();
+    expect(practice({ key: "a".repeat(41) })).toBe("boa prática 1: chave com minúsculas, números e _ (de 1 a 40)");
     expect(draftProblem({ ...d, practices: [ d.practices[0], { ...d.practices[1], key: "c4_a" } ] })).toBe("boa prática 2: chave repetida (c4_a)");
     expect(practice({ label: "" })).toBe("boa prática 1: escreva o que conta");
     expect(practice({ label: "x".repeat(121) })).toBe("boa prática 1: até 120 caracteres");
@@ -403,7 +417,12 @@ describe("recusa o que o api recusaria (e só isso)", () => {
 describe("frases das recusas do api, com o campo; desconhecido cru", () => {
   it("cobre os códigos do Save e do Rules, inclusive condição declarada", () => {
     expect(upsertErrorText([ { path: "practices[1].window_days", message: "invalid_practices" } ]))
-      .toBe("boas práticas inválidas — confira os campos (practices[1].window_days)");
+      .toBe("boas práticas inválidas — confira a boa prática 2 (window_days)");
+    expect(upsertErrorText([ { path: "practices[0].cbo_filter", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira a boa prática 1 (cbo_filter)");
+    expect(upsertErrorText([ { path: "practices[11]", message: "invalid_practices" } ])).toBe("boas práticas inválidas — confira a boa prática 12");
+    expect(upsertErrorText([ { path: "practices.points", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira os campos (practices.points)");
     expect(upsertErrorText([ { path: "eligibility.sex", message: "invalid_eligibility" } ]))
       .toBe("elegibilidade inválida — confira os códigos e as idades (eligibility.sex)");
     expect(upsertErrorText([ { path: "indicator", message: "invalid_indicator" } ])).toBe("indicador desconhecido — use C2 a C7");
@@ -413,6 +432,9 @@ describe("frases das recusas do api, com o campo; desconhecido cru", () => {
       .toBe("condição declarada precisa estar entre as condições de entrada (eligibility.declared)");
     expect(upsertErrorText([ { path: null, message: "brand_new" } ])).toBe("brand_new");
     expect(upsertErrorText([ { path: "x", message: "brand_new" } ])).toBe("brand_new");
+    // propriedades herdadas do Object não são códigos do api
+    for (const inherited of [ "constructor", "toString", "__proto__", "hasOwnProperty" ])
+      expect(upsertErrorText([ { path: "key", message: inherited } ])).toBe(inherited);
     expect(upsertErrorText([])).toBe("não foi possível concluir — tente de novo");
   });
 });
