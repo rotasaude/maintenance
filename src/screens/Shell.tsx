@@ -8,6 +8,7 @@ import { Tokens } from "./Tokens";
 import { Audit } from "./Audit";
 import { MedicationCatalog } from "./MedicationCatalog";
 import { LabTemplates } from "./LabTemplates";
+import { CareLineTemplates } from "./CareLineTemplates";
 
 // Casca do mantenedor logado (Task 6): topo com a marca, o selo
 // "Manutenção", o e-mail e "sair"; trilho rotulado com as telas à esquerda;
@@ -15,12 +16,14 @@ import { LabTemplates } from "./LabTemplates";
 // Auditoria (Task 9) já existem. Módulo 19c: Medicamentos, o catálogo da
 // plataforma (vale para todas as cidades do ambiente). Módulo 21b: Laboratório,
 // o catálogo-base de exames (também da plataforma).
-export type Screen = "cities" | "medications" | "lab" | "maintainers" | "tokens" | "audit";
+// Módulo 23: Linhas de cuidado, o catálogo-base das linhas C2–C7 (plataforma).
+export type Screen = "cities" | "medications" | "lab" | "careLines" | "maintainers" | "tokens" | "audit";
 
 const NAV: { key: Screen; label: string }[] = [
   { key: "cities", label: "Cidades" },
   { key: "medications", label: "Medicamentos" },
   { key: "lab", label: "Laboratório" },
+  { key: "careLines", label: "Linhas de cuidado" },
   { key: "maintainers", label: "Mantenedores" },
   { key: "tokens", label: "Tokens" },
   { key: "audit", label: "Auditoria" }
@@ -35,6 +38,7 @@ const ICON: Record<Screen, ReactNode> = {
   cities: svg("M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"),
   medications: svg("M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7zM8.5 8.5l7 7"),
   lab: svg("M9 3h6M10 3v7l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"),
+  careLines: svg("M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10zM8 12h2l1-2 2 4 1-2h2"),
   maintainers: svg("M9 7a4 4 0 1 0 0 .01M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"),
   tokens: svg("M15 7a4 4 0 1 1-3.87 5H8v3H5v-3H3v-3h8.13A4 4 0 0 1 15 7z"),
   audit: svg("M12 8v4l3 3M3.05 11a9 9 0 1 1 .5 4M3 4v5h5")
@@ -126,6 +130,7 @@ export function Shell() {
           )}
           {screen === "medications" && <MedicationCatalog />}
           {screen === "lab" && <LabTemplates />}
+          {screen === "careLines" && <CareLineTemplates />}
           {screen === "maintainers" && <Maintainers />}
           {screen === "tokens" && <Tokens />}
           {screen === "audit" && <Audit />}

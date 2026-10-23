@@ -35,10 +35,10 @@ describe("Shell: topo e trilho", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("trilho 'Telas' com os 6 botões de nome exato, ícone escondido, Cidades ativo", async () => {
+  it("trilho 'Telas' com os 7 botões de nome exato, ícone escondido, Cidades ativo", async () => {
     renderShell();
     const rail = await screen.findByRole("navigation", { name: "Telas" });
-    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Mantenedores", "Tokens", "Auditoria" ]) {
+    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Mantenedores", "Tokens", "Auditoria" ]) {
       const b = within(rail).getByRole("button", { name: label });
       expect(b.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     }

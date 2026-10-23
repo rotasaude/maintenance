@@ -19,6 +19,7 @@ type Documents = {
     "\n  query CityAnalyticsIndicators($slug: String!, $from: ISO8601Date!, $to: ISO8601Date!) {\n    city(slug: $slug) {\n      slug\n      analyticsIndicators(from: $from, to: $to) { weekStart indicator value suppressed }\n    }\n  }\n": typeof types.CityAnalyticsIndicatorsDocument,
     "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n": typeof types.MaintainersDocument,
     "\n  query AuditEvents($since: ISO8601DateTime, $until: ISO8601DateTime, $maintainerId: ID, $module: String, $outcome: String, $limit: Int) {\n    auditEvents(since: $since, until: $until, maintainerId: $maintainerId, module: $module, outcome: $outcome, limit: $limit) {\n      name module outcome occurredAt maintainerId login correlationId\n    }\n  }\n": typeof types.AuditEventsDocument,
+    "\n  query CareLineTemplates {\n    careLineTemplates { key version current name indicator declaredCondition eligibility practices createdAt createdBy }\n  }\n": typeof types.CareLineTemplatesDocument,
     "\n  query Cities($status: CityStatus) {\n    cities(status: $status) { slug name uf status schemaVersion schemaBehind createdAt }\n  }\n": typeof types.CitiesDocument,
     "\n  query CityHeader($slug: String!) {\n    city(slug: $slug) {\n      slug name uf status schemaVersion schemaBehind createdAt\n      channel { phoneNumberId wabaId displayPhoneNumber active }\n    }\n  }\n": typeof types.CityHeaderDocument,
     "\n  query CityProfile($slug: String!) { city(slug: $slug) { slug consentTermVersion profile { name uf ibgeCode } } }\n": typeof types.CityProfileDocument,
@@ -58,6 +59,7 @@ const documents: Documents = {
     "\n  query CityAnalyticsIndicators($slug: String!, $from: ISO8601Date!, $to: ISO8601Date!) {\n    city(slug: $slug) {\n      slug\n      analyticsIndicators(from: $from, to: $to) { weekStart indicator value suppressed }\n    }\n  }\n": types.CityAnalyticsIndicatorsDocument,
     "\n  query Maintainers { maintainers { id emailAddress active enrolled createdAt } }\n": types.MaintainersDocument,
     "\n  query AuditEvents($since: ISO8601DateTime, $until: ISO8601DateTime, $maintainerId: ID, $module: String, $outcome: String, $limit: Int) {\n    auditEvents(since: $since, until: $until, maintainerId: $maintainerId, module: $module, outcome: $outcome, limit: $limit) {\n      name module outcome occurredAt maintainerId login correlationId\n    }\n  }\n": types.AuditEventsDocument,
+    "\n  query CareLineTemplates {\n    careLineTemplates { key version current name indicator declaredCondition eligibility practices createdAt createdBy }\n  }\n": types.CareLineTemplatesDocument,
     "\n  query Cities($status: CityStatus) {\n    cities(status: $status) { slug name uf status schemaVersion schemaBehind createdAt }\n  }\n": types.CitiesDocument,
     "\n  query CityHeader($slug: String!) {\n    city(slug: $slug) {\n      slug name uf status schemaVersion schemaBehind createdAt\n      channel { phoneNumberId wabaId displayPhoneNumber active }\n    }\n  }\n": types.CityHeaderDocument,
     "\n  query CityProfile($slug: String!) { city(slug: $slug) { slug consentTermVersion profile { name uf ibgeCode } } }\n": types.CityProfileDocument,
@@ -126,6 +128,10 @@ export function graphql(source: "\n  query Maintainers { maintainers { id emailA
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query AuditEvents($since: ISO8601DateTime, $until: ISO8601DateTime, $maintainerId: ID, $module: String, $outcome: String, $limit: Int) {\n    auditEvents(since: $since, until: $until, maintainerId: $maintainerId, module: $module, outcome: $outcome, limit: $limit) {\n      name module outcome occurredAt maintainerId login correlationId\n    }\n  }\n"): (typeof documents)["\n  query AuditEvents($since: ISO8601DateTime, $until: ISO8601DateTime, $maintainerId: ID, $module: String, $outcome: String, $limit: Int) {\n    auditEvents(since: $since, until: $until, maintainerId: $maintainerId, module: $module, outcome: $outcome, limit: $limit) {\n      name module outcome occurredAt maintainerId login correlationId\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CareLineTemplates {\n    careLineTemplates { key version current name indicator declaredCondition eligibility practices createdAt createdBy }\n  }\n"): (typeof documents)["\n  query CareLineTemplates {\n    careLineTemplates { key version current name indicator declaredCondition eligibility practices createdAt createdBy }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

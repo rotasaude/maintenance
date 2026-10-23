@@ -34,7 +34,7 @@ describe("Shell", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("mostra o e-mail do mantenedor, a navegação com as seis telas e 'sair' encerra a sessão", async () => {
+  it("mostra o e-mail do mantenedor, a navegação com as sete telas e 'sair' encerra a sessão", async () => {
     const user = userEvent.setup();
     fetchMock.mockImplementation((url: string) => {
       const path = String(url);
@@ -46,7 +46,7 @@ describe("Shell", () => {
     renderShell();
 
     expect(await screen.findByText("mantenedor@rotasaude.app")).not.toBeNull();
-    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Mantenedores", "Tokens", "Auditoria" ]) {
+    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Mantenedores", "Tokens", "Auditoria" ]) {
       expect(screen.getByRole("button", { name: label })).not.toBeNull();
     }
     expect(screen.getByRole("button", { name: "Cidades" }).getAttribute("aria-current")).toBe("page");
@@ -134,5 +134,24 @@ describe("Shell", () => {
     await user.click(await screen.findByRole("button", { name: "Laboratório" }));
     expect(screen.getByRole("button", { name: "Laboratório" }).getAttribute("aria-current")).toBe("page");
     expect(await screen.findByText("nenhum exame no catálogo-base")).not.toBeNull();
+  });
+
+  it("Linhas de cuidado abre o catálogo-base de linhas", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(reply(200, { id: "m1", email_address: "mantenedor@rotasaude.app", expires_at: "2026-01-01T01:00:00Z" }));
+      if (path === "/graphql") {
+        const body = JSON.parse((init as RequestInit).body as string);
+        if (String(body.query).includes("query CareLineTemplates")) return Promise.resolve(reply(200, { data: { careLineTemplates: [] } }));
+        return Promise.resolve(reply(200, { data: { cities: [] } }));
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+    renderShell();
+
+    await user.click(await screen.findByRole("button", { name: "Linhas de cuidado" }));
+    expect(screen.getByRole("button", { name: "Linhas de cuidado" }).getAttribute("aria-current")).toBe("page");
+    expect(await screen.findByText("C2 — Cuidado da criança até 2 anos")).not.toBeNull();
   });
 });
