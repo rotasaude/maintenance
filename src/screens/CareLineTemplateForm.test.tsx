@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { C2_V1, C3_V1, C4_V1, C4_V2, renderScreen, reply } from "./CareLineTemplates.fixtures";
+import { C2_V1, C3_FULL_ELIGIBILITY, C3_FULL_PRACTICES, C3_FULL_V1, C3_V1, C4_V1, C4_V2, renderScreen, reply } from "./CareLineTemplates.fixtures";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -63,6 +63,7 @@ describe("CareLineTemplateForm", () => {
     const indicator = within(form()).getByLabelText("Indicador") as HTMLInputElement;
     expect(indicator.value).toBe("C4");
     expect(indicator.readOnly).toBe(true);
+    expect(indicator.disabled).toBe(true);
     const condition = within(form()).getByLabelText("Condição declarada que sugere a linha") as HTMLSelectElement;
     expect(condition.value).toBe("diabetes");
     expect(Array.from(condition.options).map((o) => o.value)).toEqual([ "", "diabetes" ]);
@@ -184,5 +185,56 @@ describe("CareLineTemplateForm", () => {
     await publish(user);
     await waitFor(() => expect(upserts()).toHaveLength(1));
     expect(bodyOf(upserts()[0]).variables.eligibility).toEqual({ age_max_days: 730 });
+  });
+
+  it("visita do ACS: o envio sai sem código (source: acs_visit), mesmo se a prática tinha um exame", async () => {
+    const user = userEvent.setup();
+    await openNewVersion(user);
+    await user.selectOptions(within(practice(2)).getByLabelText("Fonte"), "acs_visit");
+    await publish(user);
+    await waitFor(() => expect(upserts()).toHaveLength(1));
+    expect((bodyOf(upserts()[0]).variables.practices as SentPractice[])[1].source).toBe("acs_visit");
+  });
+
+  it("C3 completo (início de janela, filtro por código, all_of e applies_to) faz a ida e volta pelo formulário sem perder nada", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as Body;
+      if (body.query.includes("mutation UpsertCareLineTemplate")) return Promise.resolve(upsertReply());
+      return Promise.resolve(reply(200, { data: { careLineTemplates: [ C3_FULL_V1 ] } }));
+    });
+    renderScreen();
+    await user.click(await within(await screen.findByRole("row", { name: /C3 — Gestante e puérpera/ })).findByRole("button", { name: "versões" }));
+    await user.click(screen.getByRole("button", { name: "nova versão" }));
+    await publish(user);
+    await waitFor(() => expect(upserts()).toHaveLength(1));
+    const vars = bodyOf(upserts()[0]).variables;
+    expect(vars.eligibility).toEqual(C3_FULL_ELIGIBILITY);
+    expect(vars.practices).toEqual(C3_FULL_PRACTICES);
+    expect([ vars.key, vars.name, vars.indicator, vars.declaredCondition ]).toEqual([ "pregnancy_c3", "Gestante e puérpera", "C3", "pregnancy" ]);
+  });
+
+  it("resposta sem o payload: frase fixa, sem o código cru do api; o aviso fica no formulário, acima dos botões", async () => {
+    const user = userEvent.setup();
+    upsertReply = () => reply(200, { data: { upsertCareLineTemplate: null },
+      errors: [ { message: "Internal error", path: [ "upsertCareLineTemplate" ], extensions: { code: "internal_server_error" } } ] });
+    await openNewVersion(user);
+    await publish(user);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("o api recusou o pedido — confira os campos e tente de novo");
+    expect(form().contains(alert)).toBe(true);
+    const publishButton = within(form()).getByRole("button", { name: "publicar versão" });
+    expect(alert.compareDocumentPosition(publishButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("recusa antes de enviar também aparece no formulário, acima dos botões", async () => {
+    const user = userEvent.setup();
+    await openNewVersion(user);
+    await user.clear(within(practice(1)).getByLabelText("Pontos"));
+    await user.type(within(practice(1)).getByLabelText("Pontos"), "80");
+    await publish(user);
+    const alert = await screen.findByRole("alert");
+    expect(form().contains(alert)).toBe(true);
+    expect(alert.compareDocumentPosition(within(form()).getByRole("button", { name: "publicar versão" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

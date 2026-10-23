@@ -15,6 +15,7 @@ import {
 } from "../lib/careLineTemplates";
 import { Panel } from "../components/Panel";
 import { Button } from "../components/Button";
+import { ErrorState } from "../components/ErrorState";
 import { Field } from "../components/Field";
 import { checkStyle, grid, inputStyle, labelStyle, muted, row } from "./LabTemplates";
 
@@ -23,9 +24,17 @@ const CONDITION_TEXT: Record<string, string> = {
   "": "nenhuma", diabetes: "diabetes", hypertension: "hipertensão", pregnancy: "gestação", mental_health: "saúde mental"
 };
 
-type Props = { draft: TemplateDraft; fromVersion: number | null; busy: boolean; onSave(d: TemplateDraft): void; onClose(): void };
+export type Outcome = { tone: "done" | "failed"; text: string };
 
-export function CareLineTemplateForm({ draft: initial, fromVersion, busy, onSave, onClose }: Props) {
+export function OutcomeNote({ outcome }: { outcome: Outcome }) {
+  return outcome.tone === "done"
+    ? <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{outcome.text}</p>
+    : <ErrorState message={outcome.text} />;
+}
+
+type Props = { draft: TemplateDraft; fromVersion: number | null; busy: boolean; outcome: Outcome | null; onSave(d: TemplateDraft): void; onClose(): void };
+
+export function CareLineTemplateForm({ draft: initial, fromVersion, busy, outcome, onSave, onClose }: Props) {
   const [ d, setD ] = useState<TemplateDraft>(initial);
   const set = <K extends keyof TemplateDraft>(field: K) => (value: TemplateDraft[K]) => setD((x) => ({ ...x, [field]: value }));
   const setPractice = (i: number, patch: Partial<PracticeDraft>) =>
@@ -60,7 +69,7 @@ export function CareLineTemplateForm({ draft: initial, fromVersion, busy, onSave
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <label style={labelStyle}>
               <span>Indicador</span>
-              <input value={indicatorOf(d.key) || d.indicator} readOnly style={inputStyle} />
+              <input value={indicatorOf(d.key) || d.indicator} readOnly disabled style={readOnlyStyle} />
             </label>
             <small style={{ color: "var(--ink3)", fontSize: 11 }}>o da linha; não muda</small>
           </div>
@@ -129,6 +138,7 @@ export function CareLineTemplateForm({ draft: initial, fromVersion, busy, onSave
           <Button variant="secondary" onClick={() => setD((x) => ({ ...x, practices: [ ...x.practices, emptyPractice() ] }))}>incluir boa prática</Button>
         </div>
         <p style={muted}>{`Soma dos pontos: ${total}${total === 100 ? "" : " (precisa ser 100)"}`}</p>
+        {outcome && <OutcomeNote outcome={outcome} />}
         <div style={row}>
           <Button onClick={() => onSave(d)} busy={busy}>publicar versão</Button>
           <Button variant="secondary" onClick={onClose}>fechar</Button>
@@ -140,3 +150,5 @@ export function CareLineTemplateForm({ draft: initial, fromVersion, busy, onSave
 
 const fieldsetStyle = { border: "1px solid var(--rule)", borderRadius: 6, padding: 12, margin: "8px 0", display: "flex", flexDirection: "column" as const, gap: 8 };
 const legendStyle = { fontSize: 12.5, fontWeight: 600, color: "var(--ink)" };
+// Somente leitura com o visual de campo desabilitado (como o Button): fundo e texto de papéis do tema, borda tracejada.
+const readOnlyStyle = { ...inputStyle, border: "1px dashed var(--rule2)", background: "var(--sunken)", color: "var(--ink2)", cursor: "default" };

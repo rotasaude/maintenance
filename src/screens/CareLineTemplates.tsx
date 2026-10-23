@@ -24,7 +24,7 @@ import { Tag } from "../components/Tag";
 import { DataTable } from "../components/DataTable";
 import { ErrorState } from "../components/ErrorState";
 import { muted, row } from "./LabTemplates";
-import { CareLineTemplateForm } from "./CareLineTemplateForm";
+import { CareLineTemplateForm, OutcomeNote, type Outcome } from "./CareLineTemplateForm";
 
 const CareLineTemplatesQuery = graphql(`
   query CareLineTemplates {
@@ -43,7 +43,6 @@ const UpsertCareLineTemplateMutation = graphql(`
   }
 `);
 
-type Outcome = { tone: "done" | "failed"; text: string };
 type Editing = { draft: TemplateDraft; fromVersion: number | null } | null;
 
 const TITLE = "Catálogo-base de linhas de cuidado (todas as cidades do ambiente)";
@@ -52,6 +51,7 @@ const INTRO =
   "cidade: a versão nova só vale para a cidade que a adotar, e as inscrições só passam a ser avaliadas por ela depois disso. " +
   "Confira a nota técnica vigente antes de publicar (revisão anual).";
 const CARE_LINE_TEMPLATES_QUERY_KEY = [ "platform", "careLineTemplates" ];
+const REFUSED = "o api recusou o pedido — confira os campos e tente de novo";
 const OLD_API_CODES = new Set([ "undefinedField" ]);
 
 function requestErrorText(err: unknown): string {
@@ -83,7 +83,8 @@ export function CareLineTemplates() {
     onSuccess: async ({ data, fieldErrors }) => {
       const payload = data?.upsertCareLineTemplate ?? null;
       if (!payload) {
-        setOutcome({ tone: "failed", text: fieldErrors[0] ? `${fieldErrors[0].code} — ${fieldErrors[0].message}` : upsertErrorText([]) });
+        // Código e mensagem crus do api não vão para a tela: uma frase fixa.
+        setOutcome({ tone: "failed", text: fieldErrors.length > 0 ? REFUSED : upsertErrorText([]) });
         return;
       }
       if (!payload.ok) { setOutcome({ tone: "failed", text: upsertErrorText(payload.errors) }); return; }
@@ -98,14 +99,15 @@ export function CareLineTemplates() {
     }
   });
 
+  // eligibility e practices são JSON (o codegen os tipa como `any`): a forma é a de TemplateView (L1, L2).
+  const all: TemplateView[] = (query.data?.data?.careLineTemplates ?? []) as TemplateView[];
+
   // Parte da vigente; sem versão, do nome e do indicador do contrato.
   function startNew(key: string) {
     const base = currentTemplates(all).find((t) => t.key === key) ?? null;
     setOutcome(null);
     setEditing({ draft: base ? toDraft(base) : firstDraft(key), fromVersion: base ? base.version : null });
   }
-  // eligibility e practices são JSON (o codegen os tipa como `any`): a forma é a de TemplateView (L1, L2).
-  const all: TemplateView[] = (query.data?.data?.careLineTemplates ?? []) as TemplateView[];
   const fieldError = query.data?.fieldErrors[0];
   const current = currentTemplates(all);
   const missing = KEYS.filter((k) => !current.some((t) => t.key === k));
@@ -190,6 +192,7 @@ export function CareLineTemplates() {
           draft={editing.draft}
           fromVersion={editing.fromVersion}
           busy={save.isPending}
+          outcome={outcome}
           onSave={(d) => {
             const problem = draftProblem(d);
             if (problem) setOutcome({ tone: "failed", text: problem });
@@ -198,8 +201,8 @@ export function CareLineTemplates() {
           onClose={() => { setEditing(null); setOutcome(null); }}
         />
       )}
-      {outcome?.tone === "done" && <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{outcome.text}</p>}
-      {outcome?.tone === "failed" && <ErrorState message={outcome.text} />}
+      {/* Com o formulário aberto o aviso fica dentro dele, acima dos botões; sem formulário (publicou e fechou) vem aqui. */}
+      {!editing && outcome && <OutcomeNote outcome={outcome} />}
     </div>
   );
 }
