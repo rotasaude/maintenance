@@ -1422,3 +1422,105 @@ describe("FeaturesTab — linhas de cuidado (módulo 23)", () => {
     expect(document.body.textContent).not.toMatch(/undefined|null/);
   });
 });
+
+describe("FeaturesTab — cadastro individual e domiciliar (módulo 24a)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  const TR_OFF: Feature = {
+    key: "territory_registry", description: "Cadastro individual e domiciliar: microáreas, domicílios, famílias e fichas de cadastro",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const TR_ON: Feature = { ...TR_OFF, enabled: true, usable: true, changedAt: "2026-10-23T13:00:00Z", changedBy: "dev@local" };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ TR_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("territory_registry")).not.toBeNull();
+    expect(screen.getByText("Cadastro individual e domiciliar")).not.toBeNull();
+    expect(screen.getByText(TR_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("sem clinical_record: ligada, falta o prontuário, com a frase do módulo 19", async () => {
+    const user = userEvent.setup();
+    const TR_BLOCKED: Feature = { ...TR_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ TR_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ TR_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: TR_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar territory_registry" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "territory_registry", enabled: true });
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull();
+  });
+
+  it("com o prontuário: liga utilizável; desliga com dois cliques; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ TR_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        const on = body.variables.enabled === true;
+        listed = [ on ? TR_ON : { ...TR_OFF, changedAt: "2026-10-23T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar territory_registry" }));
+    expect((await screen.findByRole("status")).textContent).toBe("territory_registry ligada e utilizável.");
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar territory_registry" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "territory_registry", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("territory_registry desligada.");
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("missing desconhecido aparece cru", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ { ...TR_ON, usable: false, missing: [ "team_kind_missing" ] } ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("team_kind_missing")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined/);
+  });
+
+  it("produção: aparece e nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ TR_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("territory_registry")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+
+  it("sem IBGE e UF: ligada, falta pré-requisito, com as duas frases", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ { ...TR_ON, usable: false, missing: [ "ibge_code_missing", "uf_missing" ] } ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getByText(/código IBGE não preenchido/)).not.toBeNull();
+    expect(screen.getByText(/UF não preenchida/)).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+});

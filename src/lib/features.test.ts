@@ -218,3 +218,21 @@ describe("módulo 23", () => {
     expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 24a", () => {
+  it("territory_registry tem nome em português, o mesmo do dashboard", () => {
+    expect(featureLabel("territory_registry")).toBe("Cadastro individual e domiciliar");
+  });
+
+  it("o pré-requisito é o prontuário: a frase do módulo 19, sem redefinir; código desconhecido cru", () => {
+    expect(missingText("clinical_record_disabled")).toBe("prontuário da atenção primária (clinical_record) desligado");
+    expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
+    expect(missingText("team_kind_missing")).toBe("team_kind_missing");
+  });
+
+  it("o api exige IBGE e UF: uf_missing tem frase; ibge_code_missing segue igual", () => {
+    expect(missingText("uf_missing")).toBe("UF não preenchida");
+    expect(missingText("ibge_code_missing")).toBe("código IBGE não preenchido");
+    expect(missingSummary([ "ibge_code_missing", "uf_missing" ])).toBe("código IBGE não preenchido; UF não preenchida");
+  });
+});

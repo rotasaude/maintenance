@@ -231,6 +231,18 @@ Nenhum dado de cidadão passa por aqui. Ordem de deploy: api → dashboard e wpd
 → maintenance; contra um api sem o 23, a chave não aparece e só a tela do
 catálogo-base cai.
 
+**Cadastro individual e domiciliar (módulo 24a).** O interruptor
+`territory_registry` ("Cadastro individual e domiciliar") liga, no dashboard,
+as microáreas das equipes, o território da equipe (domicílios, famílias e
+moradores), as fichas de cadastro individual e domiciliar enviadas ao e-SUS e
+a validade de 24 meses. Exige `clinical_record` (só cidades em modo `record`)
+e o código IBGE e a UF da cidade: sem o prontuário, a linha diz "prontuário da
+atenção primária (clinical_record) desligado"; sem IBGE ou UF, "código IBGE
+não preenchido" / "UF não preenchida". Existe em todos os ambientes e não tem
+simulado. Desligar esconde as telas e para fichas novas; o que já foi gravado
+fica. Nenhum dado de cidadão passa por aqui. Ordem de deploy: api → dashboard →
+maintenance; contra um api sem o 24a, a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

@@ -25,6 +25,8 @@ const MISSING_LABELS: Record<string, string> = {
   record_mode_off: "modo de prontuário desligado",
   pec_url_missing: "endereço do PEC não preenchido",
   ibge_code_missing: "código IBGE não preenchido",
+  // Módulo 24a (L20): territory_registry também exige a UF da cidade.
+  uf_missing: "UF não preenchida",
   "credential_missing:ledi": "credencial LEDI não cadastrada",
   "credential_unauthorized:ledi": "credencial LEDI recusada no último teste",
   "credential_missing:cadsus": "credencial CADSUS não cadastrada",
@@ -88,7 +90,11 @@ const FEATURE_LABELS: Record<string, string> = {
   procedure_billing: "Faturamento de procedimentos (BPA)",
   // Módulo 23 (ADR 0040): exige clinical_record (missing:
   // clinical_record_disabled, já traduzido acima); todos os ambientes, sem simulado.
-  care_lines: "Linhas de cuidado"
+  care_lines: "Linhas de cuidado",
+  // Módulo 24a (ADR 0042): exige clinical_record, IBGE e UF (L20) (missing:
+  // clinical_record_disabled, ibge_code_missing, uf_missing, já traduzidos acima);
+  // todos os ambientes, sem simulado.
+  territory_registry: "Cadastro individual e domiciliar"
 };
 
 export function featureLabel(key: string): string | null {
