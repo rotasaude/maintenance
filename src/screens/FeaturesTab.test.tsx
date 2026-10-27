@@ -1434,7 +1434,7 @@ describe("FeaturesTab — cadastro individual e domiciliar (módulo 24a)", () =>
   afterEach(() => vi.unstubAllGlobals());
 
   const TR_OFF: Feature = {
-    key: "territory_registry", description: "Cadastro individual e domiciliar: microáreas, domicílios, famílias e fichas de cadastro",
+    key: "territory_registry", description: "Cadastro territorial: microáreas, domicílios, famílias e cadastro individual com fichas LEDI de cadastro",
     enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
   };
   const TR_ON: Feature = { ...TR_OFF, enabled: true, usable: true, changedAt: "2026-10-23T13:00:00Z", changedBy: "dev@local" };

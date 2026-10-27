@@ -234,11 +234,12 @@ catálogo-base cai.
 **Cadastro individual e domiciliar (módulo 24a).** O interruptor
 `territory_registry` ("Cadastro individual e domiciliar") liga, no dashboard,
 as microáreas das equipes, o território da equipe (domicílios, famílias e
-moradores), as fichas de cadastro individual e domiciliar enviadas ao e-SUS e
-a validade de 24 meses. Exige `clinical_record` (só cidades em modo `record`)
-e o código IBGE e a UF da cidade: sem o prontuário, a linha diz "prontuário da
-atenção primária (clinical_record) desligado"; sem IBGE ou UF, "código IBGE
-não preenchido" / "UF não preenchida". Existe em todos os ambientes e não tem
+moradores), as fichas LEDI de cadastro individual e domiciliar e a validade de
+24 meses. Exige `clinical_record` (só cidades em modo `record`) e o código IBGE
+e a UF da cidade: sem o prontuário, a linha diz "prontuário da atenção primária
+(clinical_record) desligado"; sem IBGE ou UF, "código IBGE não preenchido" /
+"UF não preenchida" (e, se faltarem depois de ligado, as fichas ficam "não
+geradas"). Existe em todos os ambientes e não tem
 simulado. Desligar esconde as telas e para fichas novas; o que já foi gravado
 fica. Nenhum dado de cidadão passa por aqui. Ordem de deploy: api → dashboard →
 maintenance; contra um api sem o 24a, a chave só não aparece.
