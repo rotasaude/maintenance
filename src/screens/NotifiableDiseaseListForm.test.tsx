@@ -36,9 +36,13 @@ describe("NotifiableDiseaseListForm", () => {
   const formRow = (name: RegExp) => within(form()).getByRole("row", { name });
   // A frase do formulário aparece no topo e de novo junto do botão de publicar.
   const publishArea = () => within(form()).getByRole("group", { name: "Publicar" });
+  // Visível duas vezes, anunciada uma só: o único alert com a frase é o junto do botão.
   const expectNearButton = async (text: string | RegExp) => {
     expect(await within(publishArea()).findByText(text)).not.toBeNull();
     expect(within(form()).getAllByText(text)).toHaveLength(2);
+    const alerts = screen.getAllByRole("alert").filter((a) => (typeof text === "string" ? a.textContent === text : text.test(a.textContent ?? "")));
+    expect(alerts).toHaveLength(1);
+    expect(publishArea().contains(alerts[0])).toBe(true);
   };
 
   // Data longe no futuro: o teste não depende do dia em que roda.
@@ -295,6 +299,17 @@ describe("NotifiableDiseaseListForm", () => {
     await user.click(within(form()).getByRole("button", { name: "descartar" }));
     expect(screen.queryByRole("region", { name: "Versão nova" })).toBeNull();
     expect(publishes()).toHaveLength(0);
+  });
+
+  it("fechar com uma doença aberta e não aplicada pede para descartar", async () => {
+    const user = userEvent.setup();
+    await openForm(user);
+    await user.click(screen.getByRole("button", { name: "acrescentar doença" }));
+    await user.type(screen.getByLabelText("Nome"), "Mpox");
+    await user.click(within(form()).getByRole("button", { name: "fechar" }));
+    expect(within(form()).getByText("descartar o rascunho?")).not.toBeNull();
+    await user.click(within(form()).getByRole("button", { name: "continuar editando" }));
+    expect((screen.getByLabelText("Nome") as HTMLInputElement).value).toBe("Mpox");
   });
 
   it("fechar depois de retirar uma doença também pede para descartar", async () => {

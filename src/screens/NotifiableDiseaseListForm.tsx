@@ -27,10 +27,12 @@ export const CODE_MISSING_TEXT = "informe o código do autenticador";
 // `field: "code"` = recusa do TOTP, mostrada no campo do código.
 export type Outcome = { tone: "done" | "failed"; text: string; field?: "code" };
 
-export function OutcomeNote({ outcome }: { outcome: Outcome }) {
-  return outcome.tone === "done"
-    ? <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{outcome.text}</p>
-    : <ErrorState message={outcome.text} />;
+// `quiet`: cópia só visual (a do topo do formulário); quem anuncia é a cópia junto do botão.
+export function OutcomeNote({ outcome, quiet }: { outcome: Outcome; quiet?: boolean }) {
+  if (outcome.tone === "failed") return <ErrorState message={outcome.text} quiet={quiet} />;
+  return quiet
+    ? <p aria-hidden="true" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{outcome.text}</p>
+    : <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{outcome.text}</p>;
 }
 
 // `onPublish` devolve se o pedido saiu (false: a conferência local recusou e o código não foi gasto).
@@ -55,7 +57,8 @@ export function NotifiableDiseaseListForm({ base, busy, outcome, onPublish, onCl
   const [ confirmingClose, setConfirmingClose ] = useState(false);
   const diff = listDiff(base, d);
   const pristine = toDraft(base);
-  const dirty = diff.added.length + diff.removed.length + diff.changed.length > 0
+  // Uma doença aberta e não aplicada também se perderia.
+  const dirty = edit !== null || diff.added.length + diff.removed.length + diff.changed.length > 0
     || d.ordinance !== pristine.ordinance || d.effectiveFrom !== pristine.effectiveFrom || d.notes !== pristine.notes;
 
   // Lista longa (71 doenças): o subformulário que abre vem para a vista com o primeiro campo editável em foco.
@@ -97,7 +100,7 @@ export function NotifiableDiseaseListForm({ base, busy, outcome, onPublish, onCl
   return (
     <section aria-label="Versão nova">
       <Panel title={base ? `Versão nova da lista (a partir da v${base.version})` : "Primeira versão da lista"}>
-        {formOutcome && <OutcomeNote outcome={formOutcome} />}
+        {formOutcome && <OutcomeNote outcome={formOutcome} quiet />}
         <div style={grid}>
           <Field label="Portaria" value={d.ordinance} onChange={set("ordinance")} helpText="ex.: Portaria GM/MS nº 11.211/2026; até 200 caracteres" />
           <Field label="Início da vigência" type="date" value={d.effectiveFrom} onChange={set("effectiveFrom")}
@@ -189,7 +192,8 @@ export function NotifiableDiseaseListForm({ base, busy, outcome, onPublish, onCl
             <Field label="Código" name="code" autoComplete="one-time-code" helpText={STEP_UP_CODE_HELP_TEXT} value={code} onChange={setCode} />
             {codeOutcome && (codeOutcome.text === CODE_MISSING_TEXT ? <ErrorState message={codeOutcome.text} /> : <StepUpCodeError message={codeOutcome.text} />)}
           </div>
-          {/* A mesma frase do topo, de novo junto do botão: quem publica no fim de uma lista longa a vê sem rolar. */}
+          {/* A mesma frase do topo, de novo junto do botão: quem publica no fim de uma lista longa a vê sem rolar.
+              Só esta é anunciada (role="alert"); a do topo é cópia visual. */}
           {formOutcome && <OutcomeNote outcome={formOutcome} />}
           {edit && <p style={muted}>aplique ou cancele a doença aberta antes de publicar</p>}
           {confirmingClose
