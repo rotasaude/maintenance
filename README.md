@@ -244,6 +244,20 @@ simulado. Desligar esconde as telas e para fichas novas; o que já foi gravado
 fica. Nenhum dado de cidadão passa por aqui. Ordem de deploy: api → dashboard →
 maintenance; contra um api sem o 24a, a chave só não aparece.
 
+**Vigilância epidemiológica (módulo 25).** O interruptor `surveillance`
+("Vigilância epidemiológica") liga, no dashboard, a fila da vigilância
+municipal, a notificação manual, a notificação negativa semanal, os relatórios
+e o painel por bairro e semana epidemiológica; com `clinical_record` também
+ligado, a consulta sugere notificar quando um CID ou CIAP-2 da lista é
+registrado. Não exige o prontuário. Existe em todos os ambientes e não tem
+simulado. Desligar esconde as telas e as sugestões; o que já foi gravado fica.
+A tela **Vigilância** do trilho mantém a lista nacional de doenças e agravos de
+notificação compulsória (Portaria GM/MS 11.211/2026): cada publicação é uma
+versão nova, com portaria e vigência, pedida com o código do autenticador, e
+vale para todas as cidades do ambiente a partir da vigência. As doenças locais
+são da cidade (dashboard). Nenhum dado de cidadão passa por aqui. Ordem de
+deploy: api → dashboard → maintenance.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

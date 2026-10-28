@@ -236,3 +236,10 @@ describe("módulo 24a", () => {
     expect(missingSummary([ "ibge_code_missing", "uf_missing" ])).toBe("código IBGE não preenchido; UF não preenchida");
   });
 });
+
+describe("módulo 25", () => {
+  it("surveillance tem nome em português, o mesmo do dashboard; missing desconhecido cru", () => {
+    expect(featureLabel("surveillance")).toBe("Vigilância epidemiológica");
+    expect(missingText("notifiable_list_missing")).toBe("notifiable_list_missing");
+  });
+});

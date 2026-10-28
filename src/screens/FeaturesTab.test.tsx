@@ -1524,3 +1524,64 @@ describe("FeaturesTab — cadastro individual e domiciliar (módulo 24a)", () =>
     expect(document.body.textContent).not.toMatch(/undefined|null/);
   });
 });
+
+describe("FeaturesTab — vigilância epidemiológica (módulo 25)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Descrição real do catálogo do api (Platform::Features::CATALOG).
+  const SV_OFF: Feature = {
+    key: "surveillance",
+    description: "Vigilância epidemiológica: notificação compulsória, fila da vigilância, notificação negativa e painel por semana epidemiológica",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const SV_ON: Feature = { ...SV_OFF, enabled: true, usable: true, changedAt: "2026-10-27T13:00:00Z", changedBy: "dev@local" };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ SV_OFF ], { recordMode: "off" })));
+    renderTab();
+
+    expect(await screen.findByText("surveillance")).not.toBeNull();
+    expect(screen.getByText("Vigilância epidemiológica")).not.toBeNull();
+    expect(screen.getByText(SV_OFF.description)).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("liga utilizável sem o prontuário; desliga com dois cliques; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ SV_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? SV_ON : { ...SV_OFF, changedAt: "2026-10-27T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "off" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar surveillance" }));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "surveillance", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe("surveillance ligada e utilizável.");
+    // Sem pré-requisito: a coluna "o que falta" diz "nada" e o estado, "ligada e utilizável".
+    expect(screen.getByText("nada")).not.toBeNull();
+    expect(screen.getByText("ligada e utilizável")).not.toBeNull();
+
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar surveillance" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect((await screen.findByRole("status")).textContent).toBe("surveillance desligada.");
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("produção: aparece e nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ SV_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("surveillance")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

@@ -94,7 +94,11 @@ const FEATURE_LABELS: Record<string, string> = {
   // Módulo 24a (ADR 0042): exige clinical_record, IBGE e UF (contrato L20; missing:
   // clinical_record_disabled, ibge_code_missing, uf_missing, já traduzidos acima);
   // todos os ambientes, sem simulado.
-  territory_registry: "Cadastro individual e domiciliar"
+  territory_registry: "Cadastro individual e domiciliar",
+  // Módulo 25 (ADR 0043): sem pré-requisito (nem o modo prontuário); a
+  // sugestão na consulta exige clinical_record no dashboard e no api, não aqui.
+  // Todos os ambientes, sem simulado.
+  surveillance: "Vigilância epidemiológica"
 };
 
 export function featureLabel(key: string): string | null {
