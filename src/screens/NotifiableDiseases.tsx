@@ -23,7 +23,7 @@ import { DataTable } from "../components/DataTable";
 import { EmptyState } from "../components/EmptyState";
 import { ErrorState } from "../components/ErrorState";
 import { muted, row } from "./LabTemplates";
-import { NotifiableDiseaseListForm, OutcomeNote, type Outcome } from "./NotifiableDiseaseListForm";
+import { CODE_MISSING_TEXT, NotifiableDiseaseListForm, OutcomeNote, type Outcome } from "./NotifiableDiseaseListForm";
 
 const NotifiableDiseasesQuery = graphql(`
   query NotifiableDiseases {
@@ -50,6 +50,7 @@ const PublishNotifiableDiseaseListMutation = graphql(`
 // expectedVersion: se outra pessoa publicar depois, a recusa vem do api e nada é reenviado sozinho.
 type Editing = { base: ListView | null } | null;
 type Publish = { draft: ListDraft; code: string; expectedVersion: number };
+const STEP_UP_CODE = /^\d{6}$/;
 
 const REFUSED = "o api recusou o pedido — confira os campos e tente de novo";
 const TITLE = "Lista nacional de doenças e agravos de notificação compulsória (todas as cidades do ambiente)";
@@ -93,10 +94,14 @@ export function NotifiableDiseases() {
         setOutcome(codeError
           ? { tone: "failed", text: codeError.message, field: "code" }
           : { tone: "failed", text: publishErrorText(payload.errors, draft) });
+        // Outra pessoa publicou: relê para o painel mostrar a versão dela e a próxima abertura partir dela. O rascunho
+        // aberto continua contra a base de quando abriu (editing.base), e nada é reenviado.
+        if (payload.errors.some((e) => e.path === "expectedVersion")) void queryClient.invalidateQueries({ queryKey: NOTIFIABLE_QUERY_KEY });
         return;
       }
       setEditing(null);
-      setOutcome({ tone: "done", text: `Versão ${payload.version ?? expectedVersion + 1} publicada.` });
+      const when = draft.effectiveFrom > todaySP() ? `agendada para ${dateText(draft.effectiveFrom)}` : `vigente a partir de ${dateText(draft.effectiveFrom)}`;
+      setOutcome({ tone: "done", text: `Versão ${payload.version ?? expectedVersion + 1} publicada — ${when}.` });
       await queryClient.invalidateQueries({ queryKey: NOTIFIABLE_QUERY_KEY });
     },
     // Rede/timeout: o api pode ter gravado; relê e mantém o formulário (um reenvio daria a recusa de versão de partida).
@@ -123,7 +128,10 @@ export function NotifiableDiseases() {
     const base = editing?.base ?? null;
     const problem = draftProblem(draft, base, todaySP());
     if (problem) { setOutcome({ tone: "failed", text: problem }); return false; }
-    publish.mutate({ draft, code, expectedVersion: base?.version ?? 0 });
+    // Código vazio ou fora do formato não sai: o step_up! contaria a tentativa para o bloqueio.
+    const stepUpCode = code.trim();
+    if (!STEP_UP_CODE.test(stepUpCode)) { setOutcome({ tone: "failed", text: CODE_MISSING_TEXT, field: "code" }); return false; }
+    publish.mutate({ draft, code: stepUpCode, expectedVersion: base?.version ?? 0 });
     return true;
   }
 

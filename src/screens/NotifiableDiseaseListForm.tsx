@@ -7,7 +7,7 @@
 // cada recusa do servidor queima um TOTP. Fontes que a tela não edita voltam
 // como vieram. O TOTP fica só no estado deste formulário e é limpo no instante
 // em que sai (step_up! roda primeiro e consome o código em qualquer desfecho).
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { optionsWith } from "../lib/labTemplates";
 import {
   DEADLINES, codesOf, deadlineText, diffText, diseaseProblem, emptyDisease, listDiff, toDraft, type DiseaseDraft, type ListDraft, type ListView
@@ -21,6 +21,8 @@ import { STEP_UP_CODE_HELP_TEXT, StepUpCodeError } from "../components/StepUpCod
 import { grid, inputStyle, labelStyle, muted, row } from "./LabTemplates";
 
 const NOTICE = "Vale para todas as cidades a partir da vigência; as notificações já feitas não mudam.";
+// Recusa local do TOTP (nada saiu, nada contou para o bloqueio): sem o aviso de bloqueio.
+export const CODE_MISSING_TEXT = "informe o código do autenticador";
 
 // `field: "code"` = recusa do TOTP, mostrada no campo do código.
 export type Outcome = { tone: "done" | "failed"; text: string; field?: "code" };
@@ -50,6 +52,26 @@ export function NotifiableDiseaseListForm({ base, busy, outcome, onPublish, onCl
   const next = (base?.version ?? 0) + 1;
   const codeOutcome = outcome?.field === "code" ? outcome : null;
   const formOutcome = outcome && outcome.field !== "code" ? outcome : null;
+  const [ confirmingClose, setConfirmingClose ] = useState(false);
+  const diff = listDiff(base, d);
+  const pristine = toDraft(base);
+  const dirty = diff.added.length + diff.removed.length + diff.changed.length > 0
+    || d.ordinance !== pristine.ordinance || d.effectiveFrom !== pristine.effectiveFrom || d.notes !== pristine.notes;
+
+  // Lista longa (71 doenças): o subformulário que abre vem para a vista com o primeiro campo editável em foco.
+  const diseaseRef = useRef<HTMLFieldSetElement>(null);
+  const openKey = edit === null ? null : String(edit.index ?? "new");
+  useEffect(() => {
+    const el = diseaseRef.current;
+    if (openKey === null || !el) return;
+    el.scrollIntoView?.({ block: "nearest" });
+    el.querySelector<HTMLElement>("input:not([disabled]), select, textarea")?.focus();
+  }, [ openKey ]);
+
+  function close() {
+    if (dirty) setConfirmingClose(true);
+    else onClose();
+  }
 
   function publish() {
     if (onPublish(d, code)) setCode("");
@@ -118,7 +140,7 @@ export function NotifiableDiseaseListForm({ base, busy, outcome, onPublish, onCl
           )}
         {edit
           ? (
-            <fieldset aria-label="Doença" style={fieldsetStyle}>
+            <fieldset ref={diseaseRef} aria-label="Doença" style={fieldsetStyle}>
               <legend style={legendStyle}>{edit.index === null ? "Doença nova" : `Editar ${nameOf(edit.draft)}`}</legend>
               {edit.problem && <ErrorState message={edit.problem} />}
               <div style={grid}>
@@ -160,16 +182,30 @@ export function NotifiableDiseaseListForm({ base, busy, outcome, onPublish, onCl
               <Button variant="secondary" onClick={() => { setRemoving(null); setEdit({ index: null, draft: emptyDisease(), problem: null }); }}>acrescentar doença</Button>
             </div>
           )}
-        <p style={{ margin: 0, fontSize: 12.5 }}>{diffText(listDiff(base, d))}</p>
+        <p style={{ margin: 0, fontSize: 12.5 }}>{diffText(diff)}</p>
         <p style={muted}>{NOTICE}</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 360 }}>
-          <Field label="Código" name="code" autoComplete="one-time-code" helpText={STEP_UP_CODE_HELP_TEXT} value={code} onChange={setCode} />
-          {codeOutcome && <StepUpCodeError message={codeOutcome.text} />}
-        </div>
-        {edit && <p style={muted}>aplique ou cancele a doença aberta antes de publicar</p>}
-        <div style={row}>
-          <Button onClick={publish} busy={busy} disabled={edit !== null}>{`publicar versão ${next}`}</Button>
-          <Button variant="secondary" onClick={onClose}>fechar</Button>
+        <div role="group" aria-label="Publicar" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 360 }}>
+            <Field label="Código" name="code" autoComplete="one-time-code" helpText={STEP_UP_CODE_HELP_TEXT} value={code} onChange={setCode} />
+            {codeOutcome && (codeOutcome.text === CODE_MISSING_TEXT ? <ErrorState message={codeOutcome.text} /> : <StepUpCodeError message={codeOutcome.text} />)}
+          </div>
+          {/* A mesma frase do topo, de novo junto do botão: quem publica no fim de uma lista longa a vê sem rolar. */}
+          {formOutcome && <OutcomeNote outcome={formOutcome} />}
+          {edit && <p style={muted}>aplique ou cancele a doença aberta antes de publicar</p>}
+          {confirmingClose
+            ? (
+              <div style={row}>
+                <span style={{ fontSize: 12.5 }}>descartar o rascunho?</span>
+                <Button variant="danger" onClick={onClose}>descartar</Button>
+                <Button variant="secondary" onClick={() => setConfirmingClose(false)}>continuar editando</Button>
+              </div>
+            )
+            : (
+              <div style={row}>
+                <Button onClick={publish} busy={busy} disabled={edit !== null}>{`publicar versão ${next}`}</Button>
+                <Button variant="secondary" onClick={close}>fechar</Button>
+              </div>
+            )}
         </div>
       </Panel>
     </section>

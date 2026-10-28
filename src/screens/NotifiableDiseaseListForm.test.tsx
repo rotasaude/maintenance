@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { V2, V3, renderScreen, reply } from "./NotifiableDiseases.fixtures";
+import { dateText, todaySP } from "../lib/notifiableDiseases";
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+const originalScroll = Element.prototype.scrollIntoView;
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Element.prototype.scrollIntoView = originalScroll; });
 type Body = { query: string; variables: Record<string, unknown> };
 const bodyOf = (call: unknown[]): Body => JSON.parse((call[1] as RequestInit).body as string);
 
@@ -32,6 +34,12 @@ describe("NotifiableDiseaseListForm", () => {
   // A tabela da vigente continua na tela durante a edição: as linhas são procuradas só no formulário (R11).
   const form = () => screen.getByRole("region", { name: "Versão nova" });
   const formRow = (name: RegExp) => within(form()).getByRole("row", { name });
+  // A frase do formulário aparece no topo e de novo junto do botão de publicar.
+  const publishArea = () => within(form()).getByRole("group", { name: "Publicar" });
+  const expectNearButton = async (text: string | RegExp) => {
+    expect(await within(publishArea()).findByText(text)).not.toBeNull();
+    expect(within(form()).getAllByText(text)).toHaveLength(2);
+  };
 
   // Data longe no futuro: o teste não depende do dia em que roda.
   const setValidFrom = (value: string) => fireEvent.change(screen.getByLabelText("Início da vigência"), { target: { value } });
@@ -66,7 +74,7 @@ describe("NotifiableDiseaseListForm", () => {
     // A fonte que a tela não edita volta como veio.
     expect((v.diseases as { sources: Record<string, string> }[])[0].sources)
       .toEqual({ deadline: "Portaria GM/MS 11.211/2026, anexo 1", cid10: "ficha de investigação de dengue", repeat_after_days: "proposta do plano 25" });
-    expect(await screen.findByText("Versão 3 publicada.")).not.toBeNull();
+    expect(await screen.findByText("Versão 3 publicada — agendada para 01/11/2099.")).not.toBeNull();
     await waitFor(() => expect(lists().length).toBeGreaterThanOrEqual(2));
     expect(screen.queryByRole("region", { name: "Versão nova" })).toBeNull();
   });
@@ -89,7 +97,7 @@ describe("NotifiableDiseaseListForm", () => {
     setValidFrom("2020-01-01");
     await user.type(screen.getByLabelText("Código"), "123456");
     await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
-    expect(screen.getByText("a vigência não pode começar antes de hoje")).not.toBeNull();
+    await expectNearButton("a vigência não pode começar antes de hoje");
     expect(publishes()).toHaveLength(0);
   });
 
@@ -114,7 +122,9 @@ describe("NotifiableDiseaseListForm", () => {
     setValidFrom("2099-11-01");
     await user.type(screen.getByLabelText("Código"), "123456");
     await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
-    expect(await screen.findByText("outra pessoa publicou uma versão enquanto você editava — recarregue")).not.toBeNull();
+    await expectNearButton("outra pessoa publicou uma versão enquanto você editava — recarregue");
+    // Relê a lista (o painel mostra a versão da outra pessoa), mas o rascunho segue contra a base de quando abriu.
+    await waitFor(() => expect(lists().length).toBeGreaterThanOrEqual(2));
     expect(screen.getByRole("button", { name: "publicar versão 3" })).not.toBeNull();
     expect((screen.getByLabelText("Código") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText("Início da vigência") as HTMLInputElement).value).toBe("2099-11-01");
@@ -128,7 +138,7 @@ describe("NotifiableDiseaseListForm", () => {
     setValidFrom("2099-11-01");
     await user.type(screen.getByLabelText("Código"), "123456");
     await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
-    expect(await screen.findByText("doença 2 (sarampo): CID-10 nº 1 recusado")).not.toBeNull();
+    await expectNearButton("doença 2 (sarampo): CID-10 nº 1 recusado");
     expect(screen.queryByText(/invalid_list/)).toBeNull();
     expect((screen.getByLabelText("Código") as HTMLInputElement).value).toBe("");
     expect(form()).not.toBeNull();
@@ -142,7 +152,7 @@ describe("NotifiableDiseaseListForm", () => {
     await user.type(screen.getByLabelText("Código"), "123456");
     await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
     await waitFor(() => expect(publishes()).toHaveLength(1));
-    expect(await within(form()).findByRole("alert")).not.toBeNull();
+    expect(await within(publishArea()).findByRole("alert")).not.toBeNull();
     expect((screen.getByLabelText("Código") as HTMLInputElement).value).toBe("");
     expect((screen.getByLabelText("Início da vigência") as HTMLInputElement).value).toBe("2099-11-01");
     await waitFor(() => expect(lists().length).toBeGreaterThanOrEqual(2));
@@ -160,7 +170,7 @@ describe("NotifiableDiseaseListForm", () => {
     await user.click(screen.getByRole("button", { name: "publicar versão 4" }));
     await waitFor(() => expect(publishes()).toHaveLength(1));
     expect(bodyOf(publishes()[0]).variables).toMatchObject({ expectedVersion: 3 });
-    expect(await screen.findByText("Versão 4 publicada.")).not.toBeNull();
+    expect(await screen.findByText("Versão 4 publicada — agendada para 01/11/2099.")).not.toBeNull();
   });
 
   it("vigência antes da agendada é recusada antes de enviar", async () => {
@@ -171,7 +181,7 @@ describe("NotifiableDiseaseListForm", () => {
     await user.type(screen.getByLabelText("Código"), "123456");
     await user.click(screen.getByRole("button", { name: "publicar versão 4" }));
     // 30/11/2026 pode já ter passado no dia em que o teste roda: qualquer das duas recusas de vigência serve, e nada sai.
-    expect(screen.getByText(/a vigência não pode começar antes (da última versão publicada \(01\/12\/2026\)|de hoje)/)).not.toBeNull();
+    await expectNearButton(/a vigência não pode começar antes (da última versão publicada \(01\/12\/2026\)|de hoje)/);
     expect(publishes()).toHaveLength(0);
   });
 
@@ -215,6 +225,84 @@ describe("NotifiableDiseaseListForm", () => {
     await user.click(screen.getByRole("button", { name: "publicar versão 1" }));
     await waitFor(() => expect(publishes()).toHaveLength(1));
     expect(bodyOf(publishes()[0]).variables).toMatchObject({ expectedVersion: 0, ordinance: "Portaria GM/MS nº 11.211/2026" });
-    expect(await screen.findByText("Versão 1 publicada.")).not.toBeNull();
+    expect(await screen.findByText("Versão 1 publicada — agendada para 01/11/2099.")).not.toBeNull();
+  });
+
+  it("vigência hoje: a mensagem diz vigente a partir de hoje", async () => {
+    const user = userEvent.setup();
+    await openForm(user);
+    const today = todaySP();
+    setValidFrom(today);
+    await user.type(screen.getByLabelText("Código"), "123456");
+    await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
+    expect(await screen.findByText(`Versão 3 publicada — vigente a partir de ${dateText(today)}.`)).not.toBeNull();
+  });
+
+  it.each([ [ "vazio", "" ], [ "curto", "12345" ], [ "com letra", "12a456" ] ])(
+    "código %s não sai (o step_up! contaria para o bloqueio): frase no campo, o código fica", async (_, typed) => {
+      const user = userEvent.setup();
+      await openForm(user);
+      setValidFrom("2099-11-01");
+      if (typed) await user.type(screen.getByLabelText("Código"), typed);
+      await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
+      expect(within(publishArea()).getByText("informe o código do autenticador")).not.toBeNull();
+      expect(screen.queryByText("Tentativas erradas contam para o bloqueio da conta.")).toBeNull();
+      expect((screen.getByLabelText("Código") as HTMLInputElement).value).toBe(typed);
+      expect(publishes()).toHaveLength(0);
+    });
+
+  it("código com espaços em volta sai aparado", async () => {
+    const user = userEvent.setup();
+    await openForm(user);
+    setValidFrom("2099-11-01");
+    await user.type(screen.getByLabelText("Código"), " 123456 ");
+    await user.click(screen.getByRole("button", { name: "publicar versão 3" }));
+    await waitFor(() => expect(publishes()).toHaveLength(1));
+    expect(bodyOf(publishes()[0]).variables.code).toBe("123456");
+  });
+
+  it("o subformulário que abre vem para a vista com o primeiro campo editável em foco", async () => {
+    const user = userEvent.setup();
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    await openForm(user);
+    await user.click(screen.getByRole("button", { name: "acrescentar doença" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Código da doença"));
+    expect(scroll).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "cancelar" }));
+    await user.click(within(formRow(/Dengue/)).getByRole("button", { name: "editar" }));
+    // O código de uma doença da versão de partida não se edita: o foco vai para o nome.
+    expect(document.activeElement).toBe(screen.getByLabelText("Nome"));
+    expect(scroll).toHaveBeenCalledTimes(2);
+  });
+
+  it("fechar sem mudança fecha direto", async () => {
+    const user = userEvent.setup();
+    await openForm(user);
+    await user.click(within(form()).getByRole("button", { name: "fechar" }));
+    expect(screen.queryByRole("region", { name: "Versão nova" })).toBeNull();
+  });
+
+  it("fechar com rascunho mudado pede para descartar", async () => {
+    const user = userEvent.setup();
+    await openForm(user);
+    setValidFrom("2099-11-01");
+    await user.click(within(form()).getByRole("button", { name: "fechar" }));
+    expect(within(form()).getByText("descartar o rascunho?")).not.toBeNull();
+    await user.click(within(form()).getByRole("button", { name: "continuar editando" }));
+    expect((screen.getByLabelText("Início da vigência") as HTMLInputElement).value).toBe("2099-11-01");
+    await user.click(within(form()).getByRole("button", { name: "fechar" }));
+    await user.click(within(form()).getByRole("button", { name: "descartar" }));
+    expect(screen.queryByRole("region", { name: "Versão nova" })).toBeNull();
+    expect(publishes()).toHaveLength(0);
+  });
+
+  it("fechar depois de retirar uma doença também pede para descartar", async () => {
+    const user = userEvent.setup();
+    await openForm(user);
+    await user.click(within(formRow(/Sarampo/)).getByRole("button", { name: "retirar" }));
+    await user.click(within(formRow(/Sarampo/)).getByRole("button", { name: "sim, retirar" }));
+    await user.click(within(form()).getByRole("button", { name: "fechar" }));
+    expect(within(form()).getByText("descartar o rascunho?")).not.toBeNull();
   });
 });
