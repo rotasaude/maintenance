@@ -1585,3 +1585,88 @@ describe("FeaturesTab — vigilância epidemiológica (módulo 25)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — regulação municipal (módulo 26a)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const RG_OFF: Feature = {
+    key: "care_regulation", description: "Regulação municipal: pedido de regulação na consulta, fila por cor e espera, ofertas e cotas por prestador e convivência com o sistema do estado",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const RG_ON: Feature = { ...RG_OFF, enabled: true, usable: true, changedAt: "2026-10-28T13:00:00Z", changedBy: "dev@local" };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ RG_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("care_regulation")).not.toBeNull();
+    expect(screen.getByText("Regulação municipal")).not.toBeNull();
+    expect(screen.getByText(RG_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("sem clinical_record: ligada, falta o prontuário, com a frase do módulo 19", async () => {
+    const user = userEvent.setup();
+    const RG_BLOCKED: Feature = { ...RG_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ RG_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ RG_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: RG_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar care_regulation" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "care_regulation", enabled: true });
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+  });
+
+  it("com o prontuário, liga utilizável e desliga com dois cliques; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ RG_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? RG_ON : { ...RG_OFF, changedAt: "2026-10-28T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar care_regulation" }));
+    expect((await screen.findByRole("status")).textContent).toBe("care_regulation ligada e utilizável.");
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar care_regulation" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "care_regulation", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("care_regulation desligada.");
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("produção: aparece e nenhum aviso de simulado", async () => {
+    const MW_ON_HERE: Feature = {
+      key: "fake_middleware", description: "Middleware simulado (desenvolvimento)", enabled: true, usable: true,
+      missing: [], changedAt: "2026-10-28T13:00:00Z", changedBy: "dev@local"
+    };
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ RG_ON, MW_ON_HERE ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("care_regulation")).not.toBeNull();
+    const notes = screen.getAllByRole("note");
+    expect(notes).toHaveLength(1);
+    expect(notes[0].textContent).toBe(FAKE_MIDDLEWARE_NOTICE);
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+});

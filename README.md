@@ -258,6 +258,21 @@ vale para todas as cidades do ambiente a partir da vigência. As doenças locais
 são da cidade (dashboard). Nenhum dado de cidadão passa por aqui. Ordem de
 deploy: api → dashboard → maintenance.
 
+**Regulação municipal (módulo 26a).** O interruptor `care_regulation`
+("Regulação municipal") liga, no dashboard, o "Pedir regulação" na consulta
+(especialidade ou procedimento, CID, justificativa, cor de risco e guia em
+PDF), a fila regulada por cor e tempo de espera, a autorização numa oferta
+com saldo, os prestadores com cota mensal, os prazos por cor, a lista do que o
+enfermeiro pode pedir, o agendamento externo e o desfecho, o número do sistema
+do estado e a exportação para digitar nele; no wpda, "Meus encaminhamentos",
+com a situação e nunca a posição na fila. Exige `clinical_record` (só cidades
+em modo `record`): sem ele, a linha diz "prontuário da atenção primária
+(clinical_record) desligado". Existe em todos os ambientes e não tem simulado.
+Desligar esconde as telas; os pedidos ficam. O Rota Saúde não escreve no
+SISREG, no e-SUS Regulação nem em sistema do estado. Nenhum dado de cidadão
+passa por aqui. Ordem de deploy: api → dashboard e wpda → maintenance; contra
+um api sem o 26a, a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

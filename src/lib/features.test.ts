@@ -243,3 +243,15 @@ describe("módulo 25", () => {
     expect(missingText("notifiable_list_missing")).toBe("notifiable_list_missing");
   });
 });
+
+describe("módulo 26a", () => {
+  it("care_regulation tem nome em português, o mesmo do dashboard; missing desconhecido cru", () => {
+    expect(featureLabel("care_regulation")).toBe("Regulação municipal");
+    expect(missingText("regulation_settings_missing")).toBe("regulation_settings_missing");
+  });
+
+  it("o pré-requisito é o prontuário: a frase do módulo 19, sem redefinir", () => {
+    expect(missingText("clinical_record_disabled")).toBe("prontuário da atenção primária (clinical_record) desligado");
+    expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+});

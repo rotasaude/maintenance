@@ -98,7 +98,11 @@ const FEATURE_LABELS: Record<string, string> = {
   // Módulo 25 (ADR 0043): sem pré-requisito (nem o modo prontuário); a
   // sugestão na consulta exige clinical_record no dashboard e no api, não aqui.
   // Todos os ambientes, sem simulado.
-  surveillance: "Vigilância epidemiológica"
+  surveillance: "Vigilância epidemiológica",
+  // Módulo 26a (ADR 0044): exige clinical_record (missing:
+  // clinical_record_disabled, já traduzido acima); o pedido nasce na consulta.
+  // Todos os ambientes, sem simulado.
+  care_regulation: "Regulação municipal"
 };
 
 export function featureLabel(key: string): string | null {
