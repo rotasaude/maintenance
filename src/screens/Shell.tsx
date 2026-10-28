@@ -9,6 +9,7 @@ import { Audit } from "./Audit";
 import { MedicationCatalog } from "./MedicationCatalog";
 import { LabTemplates } from "./LabTemplates";
 import { CareLineTemplates } from "./CareLineTemplates";
+import { NotifiableDiseases } from "./NotifiableDiseases";
 
 // Casca do mantenedor logado (Task 6): topo com a marca, o selo
 // "Manutenção", o e-mail e "sair"; trilho rotulado com as telas à esquerda;
@@ -17,13 +18,15 @@ import { CareLineTemplates } from "./CareLineTemplates";
 // plataforma (vale para todas as cidades do ambiente). Módulo 21b: Laboratório,
 // o catálogo-base de exames (também da plataforma).
 // Módulo 23: Linhas de cuidado, o catálogo-base das linhas C2–C7 (plataforma).
-export type Screen = "cities" | "medications" | "lab" | "careLines" | "maintainers" | "tokens" | "audit";
+// Módulo 25: Vigilância, a lista nacional de doenças de notificação (plataforma).
+export type Screen = "cities" | "medications" | "lab" | "careLines" | "surveillance" | "maintainers" | "tokens" | "audit";
 
 const NAV: { key: Screen; label: string }[] = [
   { key: "cities", label: "Cidades" },
   { key: "medications", label: "Medicamentos" },
   { key: "lab", label: "Laboratório" },
   { key: "careLines", label: "Linhas de cuidado" },
+  { key: "surveillance", label: "Vigilância" },
   { key: "maintainers", label: "Mantenedores" },
   { key: "tokens", label: "Tokens" },
   { key: "audit", label: "Auditoria" }
@@ -39,6 +42,7 @@ const ICON: Record<Screen, ReactNode> = {
   medications: svg("M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7zM8.5 8.5l7 7"),
   lab: svg("M9 3h6M10 3v7l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"),
   careLines: svg("M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10zM8 12h2l1-2 2 4 1-2h2"),
+  surveillance: svg("M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM12 9v6M9 12h6"),
   maintainers: svg("M9 7a4 4 0 1 0 0 .01M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.13a4 4 0 0 1 0 7.75M21 21v-2a4 4 0 0 0-3-3.85"),
   tokens: svg("M15 7a4 4 0 1 1-3.87 5H8v3H5v-3H3v-3h8.13A4 4 0 0 1 15 7z"),
   audit: svg("M12 8v4l3 3M3.05 11a9 9 0 1 1 .5 4M3 4v5h5")
@@ -131,6 +135,7 @@ export function Shell() {
           {screen === "medications" && <MedicationCatalog />}
           {screen === "lab" && <LabTemplates />}
           {screen === "careLines" && <CareLineTemplates />}
+          {screen === "surveillance" && <NotifiableDiseases />}
           {screen === "maintainers" && <Maintainers />}
           {screen === "tokens" && <Tokens />}
           {screen === "audit" && <Audit />}

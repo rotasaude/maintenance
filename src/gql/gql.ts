@@ -38,6 +38,7 @@ type Documents = {
     "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n": typeof types.MedicationCatalogDocument,
     "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n": typeof types.ImportMedicationCatalogDocument,
     "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n": typeof types.ImportAnvisaListsDocument,
+    "\n  query NotifiableDiseases {\n    notifiableDiseases {\n      version ordinance effectiveFrom current createdAt publishedBy notes sources\n      diseases { code name deadline cid10 ciap2 repeatAfterDays sinanForm notes sources }\n    }\n  }\n": typeof types.NotifiableDiseasesDocument,
     "\n  query CityPecConfig($slug: String!) {\n    cityPecConfig(citySlug: $slug) { pecOrigin hmacKeyConfigured hmacKeyUpdatedAt }\n  }\n": typeof types.CityPecConfigDocument,
     "\n  mutation SetCityPecOrigin($citySlug: String!, $pecOrigin: String) {\n    setCityPecOrigin(citySlug: $citySlug, pecOrigin: $pecOrigin) { ok errors { path message } }\n  }\n": typeof types.SetCityPecOriginDocument,
     "\n  mutation RotateCityPecHmacKey($citySlug: String!, $key: String!, $code: String!) {\n    rotateCityPecHmacKey(citySlug: $citySlug, key: $key, code: $code) { ok errors { path message } }\n  }\n": typeof types.RotateCityPecHmacKeyDocument,
@@ -79,6 +80,7 @@ const documents: Documents = {
     "\n  query MedicationCatalog($first: Int!) {\n    medicationCatalog {\n      currentRelease { id importedAt itemsCount hiddenCount }\n      reviewItems(first: $first) { catmatCode sourceDescription parseStatus }\n    }\n  }\n": types.MedicationCatalogDocument,
     "\n  mutation ImportMedicationCatalog {\n    importMedicationCatalog { ok releaseId added changed removed errors { path message } }\n  }\n": types.ImportMedicationCatalogDocument,
     "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n": types.ImportAnvisaListsDocument,
+    "\n  query NotifiableDiseases {\n    notifiableDiseases {\n      version ordinance effectiveFrom current createdAt publishedBy notes sources\n      diseases { code name deadline cid10 ciap2 repeatAfterDays sinanForm notes sources }\n    }\n  }\n": types.NotifiableDiseasesDocument,
     "\n  query CityPecConfig($slug: String!) {\n    cityPecConfig(citySlug: $slug) { pecOrigin hmacKeyConfigured hmacKeyUpdatedAt }\n  }\n": types.CityPecConfigDocument,
     "\n  mutation SetCityPecOrigin($citySlug: String!, $pecOrigin: String) {\n    setCityPecOrigin(citySlug: $citySlug, pecOrigin: $pecOrigin) { ok errors { path message } }\n  }\n": types.SetCityPecOriginDocument,
     "\n  mutation RotateCityPecHmacKey($citySlug: String!, $key: String!, $code: String!) {\n    rotateCityPecHmacKey(citySlug: $citySlug, key: $key, code: $code) { ok errors { path message } }\n  }\n": types.RotateCityPecHmacKeyDocument,
@@ -206,6 +208,10 @@ export function graphql(source: "\n  mutation ImportMedicationCatalog {\n    imp
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n"): (typeof documents)["\n  mutation ImportAnvisaLists {\n    importAnvisaLists { ok antimicrobials controlled errors { path message } }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query NotifiableDiseases {\n    notifiableDiseases {\n      version ordinance effectiveFrom current createdAt publishedBy notes sources\n      diseases { code name deadline cid10 ciap2 repeatAfterDays sinanForm notes sources }\n    }\n  }\n"): (typeof documents)["\n  query NotifiableDiseases {\n    notifiableDiseases {\n      version ordinance effectiveFrom current createdAt publishedBy notes sources\n      diseases { code name deadline cid10 ciap2 repeatAfterDays sinanForm notes sources }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
