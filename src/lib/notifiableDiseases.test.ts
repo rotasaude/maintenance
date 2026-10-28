@@ -28,6 +28,10 @@ describe("rótulos e versões", () => {
     expect(latestList([])).toBeNull();
     expect(scheduledList([ V1, V3, V2 ])?.version).toBe(3);
     expect(scheduledList([ V1, V2 ])).toBeNull();
+    // Duas agendadas: a próxima a entrar em vigor (a menor acima da vigente), não a mais recente.
+    const V4 = { ...V3, version: 4, effectiveFrom: "2027-01-01" };
+    expect(scheduledList([ V4, V1, V3, V2 ])?.version).toBe(3);
+    expect(latestList([ V4, V1, V3, V2 ])?.version).toBe(4);
     expect(historyOf([ V1, V3, V2 ]).map((l) => l.version)).toEqual([ 3, 2, 1 ]);
     expect([ V1, V2, V3 ].map((l) => listState(l, [ V1, V2, V3 ]))).toEqual([ "anterior", "vigente", "agendada" ]);
   });
@@ -35,7 +39,7 @@ describe("rótulos e versões", () => {
     const S1 = { ...V1, effectiveFrom: "2027-01-01", current: false };
     const S2 = { ...V2, effectiveFrom: "2027-02-01", current: false };
     expect(currentList([ S1, S2 ])).toBeNull();
-    expect(scheduledList([ S1, S2 ])?.version).toBe(2);
+    expect(scheduledList([ S2, S1 ])?.version).toBe(1);
     expect([ S1, S2 ].map((l) => listState(l, [ S1, S2 ]))).toEqual([ "agendada", "agendada" ]);
   });
   it("data só-dia como texto, sem fuso; hoje em America/Sao_Paulo", () => {

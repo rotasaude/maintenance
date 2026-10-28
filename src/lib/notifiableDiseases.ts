@@ -55,10 +55,10 @@ export function latestList(all: ListView[]): ListView | null {
   return all.reduce<ListView | null>((best, l) => (!best || l.version > best.version ? l : best), null);
 }
 
-// A de maior versão acima da vigente (ou qualquer uma, se nenhuma está em vigor).
+// A próxima a entrar em vigor: a de menor versão acima da vigente (sem vigente, a menor de todas).
 export function scheduledList(all: ListView[]): ListView | null {
-  const latest = latestList(all);
-  return latest && latest.version > (currentList(all)?.version ?? 0) ? latest : null;
+  const current = currentList(all)?.version ?? 0;
+  return all.reduce<ListView | null>((next, l) => (l.version > current && (!next || l.version < next.version) ? l : next), null);
 }
 
 export function historyOf(all: ListView[]): ListView[] { return [ ...all ].sort((a, b) => b.version - a.version); }
@@ -103,10 +103,12 @@ export function emptyDisease(): DiseaseDraft {
 }
 
 const rawCodes = (text: string) => text.toUpperCase().replace(/\./g, "").split(/[\s,;]+/).filter(Boolean);
+// Deduplicar aqui e recusar repetidos em diseaseProblem é intencional: a recusa protege entrada que não passa por codesOf.
 export function codesOf(text: string): string[] { return [ ...new Set(rawCodes(text)) ]; }
 
 // ---- formato ----
 
+// Recusa repetidos de propósito, embora codesOf deduplique (ver codesOf): o api recusa os dois em field_error.
 function codesProblem(text: string, re: RegExp, label: string): string | null {
   const seen = new Set<string>();
   for (const c of rawCodes(text)) {

@@ -634,7 +634,10 @@ export type NotifiableDiseaseInput = {
   sources: Scalars['JSON']['input'];
 };
 
-/** Versão da lista nacional de doenças e agravos de notificação compulsória. Imutável; vale para todas as cidades a partir de effectiveFrom. */
+/**
+ * Versão da lista nacional de doenças e agravos de notificação compulsória.
+ * Imutável; vale para todas as cidades a partir de effectiveFrom.
+ */
 export type NotifiableDiseaseVersion = {
   __typename?: 'NotifiableDiseaseVersion';
   createdAt: Scalars['ISO8601DateTime']['output'];
