@@ -77,11 +77,17 @@ describe("NotifiableDiseases", () => {
     expect(screen.queryByRole("region", { name: "Versões da lista" })).toBeNull();
   });
 
-  it("sem nenhuma versão: estado vazio e primeira versão (desligada até o formulário)", async () => {
+  it("sem nenhuma versão: estado vazio e primeira versão, que abre o formulário vazio", async () => {
+    const user = userEvent.setup();
     listing([]);
     renderScreen();
     expect(await screen.findByText("nenhuma versão da lista")).not.toBeNull();
-    expect((screen.getByRole("button", { name: "primeira versão" }) as HTMLButtonElement).disabled).toBe(true);
+    const first = screen.getByRole("button", { name: "primeira versão" }) as HTMLButtonElement;
+    expect(first.disabled).toBe(false);
+    await user.click(first);
+    const form = screen.getByRole("region", { name: "Versão nova" });
+    expect(within(form).queryAllByRole("row").filter((r) => within(r).queryByRole("button"))).toHaveLength(0);
+    expect(within(form).getByRole("button", { name: "publicar versão 1" })).not.toBeNull();
   });
 
   it("há versões e nenhuma em vigor: avisa e mostra a agendada", async () => {
