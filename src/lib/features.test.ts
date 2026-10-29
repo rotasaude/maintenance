@@ -255,3 +255,10 @@ describe("módulo 26a", () => {
     expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 27a", () => {
+  it("pharmacy tem nome em português, o mesmo do dashboard; missing desconhecido cru", () => {
+    expect(featureLabel("pharmacy")).toBe("Farmácia e almoxarifado");
+    expect(missingText("pharmacy_settings_missing")).toBe("pharmacy_settings_missing");
+  });
+});

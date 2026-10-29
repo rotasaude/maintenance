@@ -1670,3 +1670,62 @@ describe("FeaturesTab — regulação municipal (módulo 26a)", () => {
     expect(document.body.textContent).not.toMatch(/undefined|null/);
   });
 });
+
+describe("FeaturesTab — farmácia e almoxarifado (módulo 27a)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Descrição real do catálogo do api (Platform::Features::CATALOG), anotada na Task 0.
+  const PH_OFF: Feature = {
+    key: "pharmacy",
+    description: "Farmácia e almoxarifado: estoque por local com lotes e validade, transferências, inventário e dispensação pela receita",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const PH_ON: Feature = { ...PH_OFF, enabled: true, usable: true, changedAt: "2026-10-29T13:00:00Z", changedBy: "dev@local" };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ PH_OFF ], { recordMode: "off" })));
+    renderTab();
+    expect(await screen.findByText("pharmacy")).not.toBeNull();
+    expect(screen.getByText("Farmácia e almoxarifado")).not.toBeNull();
+    expect(screen.getByText(PH_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("sem prontuário: liga utilizável, nada falta; desliga com dois cliques; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ PH_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? PH_ON : { ...PH_OFF, changedAt: "2026-10-29T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "off" }));
+    });
+    renderTab();
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar pharmacy" }));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "pharmacy", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe("pharmacy ligada e utilizável.");
+    expect(screen.getByText("nada")).not.toBeNull();
+    expect(screen.getByText("ligada e utilizável")).not.toBeNull();
+    expect(screen.queryByText("ligada, falta pré-requisito")).toBeNull();
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar pharmacy" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "pharmacy", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("pharmacy desligada.");
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("produção: aparece e nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ PH_ON ], { recordMode: "record" })));
+    renderTab();
+    expect(await screen.findByText("pharmacy")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

@@ -273,6 +273,21 @@ SISREG, no e-SUS Regulação nem em sistema do estado. Nenhum dado de cidadão
 passa por aqui. Ordem de deploy: api → dashboard e wpda → maintenance; contra
 um api sem o 26a, a chave só não aparece.
 
+**Farmácia e almoxarifado (módulo 27a).** O interruptor `pharmacy`
+("Farmácia e almoxarifado") liga, no dashboard, o almoxarifado central e a
+farmácia de cada unidade que dispensa: locais e equipe por local, entradas
+por nota ou doação com lote, validade e conversão da embalagem, inventário de
+abertura, transferência com recebimento conferido lote a lote, ajustes e
+perdas (com o código do autenticador e, acima do limite da cidade, aprovação
+de outra pessoa), posição por local e lote, extrato, alertas de validade e de
+estoque mínimo e a dispensação pela receita digital ou externa, com o
+controlado só pelo farmacêutico e a retenção da receita. Não tem
+pré-requisito: liga em qualquer modo de prontuário. Existe em todos os
+ambientes e não tem simulado. Desligar esconde as telas; movimentos, lotes e
+dispensações ficam. Nada vai ao BNAFAR nesta entrega (27b). Nenhum dado de
+cidadão passa por aqui. Ordem de deploy: api → dashboard → maintenance;
+contra um api sem o 27a, a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

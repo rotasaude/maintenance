@@ -102,7 +102,10 @@ const FEATURE_LABELS: Record<string, string> = {
   // Módulo 26a (ADR 0044): exige clinical_record (missing:
   // clinical_record_disabled, já traduzido acima); o pedido nasce na consulta.
   // Todos os ambientes, sem simulado.
-  care_regulation: "Regulação municipal"
+  care_regulation: "Regulação municipal",
+  // Módulo 27a (ADR 0045): sem pré-requisito (a receita externa não depende
+  // do prontuário). Todos os ambientes, sem simulado.
+  pharmacy: "Farmácia e almoxarifado"
 };
 
 export function featureLabel(key: string): string | null {
