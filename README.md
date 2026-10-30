@@ -288,6 +288,20 @@ dispensações ficam. Nada vai ao BNAFAR nesta entrega (27b). Nenhum dado de
 cidadão passa por aqui. Ordem de deploy: api → dashboard → maintenance;
 contra um api sem o 27a, a chave só não aparece.
 
+**Saúde bucal (módulo 28).** O interruptor `dental_care` ("Saúde bucal")
+liga, no dashboard, a consulta odontológica (um tipo da consulta do 19a) com
+o odontograma por dente e face, o plano de tratamento, os registros de
+especialidade do CEO (periograma, registro periodontal, endodontia), os
+pedidos de prótese ao laboratório, a unidade CEO com tipo e especialidades,
+as metas do CEO, os indicadores B1/B2 por equipe de saúde bucal e a ficha FAO
+pelo exportador LEDI do módulo 16. Exige `clinical_record` (só cidades em modo
+`record`): sem ele, a linha diz "prontuário da atenção primária
+(clinical_record) desligado". Existe em todos os ambientes e não tem simulado.
+Desligar esconde as telas; consultas, odontogramas, planos e próteses ficam
+(a exclusão LGPD retém tudo, como o prontuário). Nenhum dado de cidadão passa
+por aqui. Ordem de deploy: api → dashboard → maintenance; contra um api sem o
+28, a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

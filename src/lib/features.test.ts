@@ -262,3 +262,14 @@ describe("módulo 27a", () => {
     expect(missingText("pharmacy_settings_missing")).toBe("pharmacy_settings_missing");
   });
 });
+
+describe("módulo 28", () => {
+  it("dental_care tem nome em português, o mesmo do dashboard; missing desconhecido cru", () => {
+    expect(featureLabel("dental_care")).toBe("Saúde bucal");
+    expect(missingText("ceo_profile_missing")).toBe("ceo_profile_missing");
+  });
+
+  it("o pré-requisito é o prontuário: a frase do módulo 19, sem redefinir", () => {
+    expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+});

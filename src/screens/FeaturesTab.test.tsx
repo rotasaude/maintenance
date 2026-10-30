@@ -1729,3 +1729,89 @@ describe("FeaturesTab — farmácia e almoxarifado (módulo 27a)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — saúde bucal (módulo 28)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Descrição real do catálogo do api (Platform::Features::CATALOG), anotada na Task 0.
+  const DC_OFF: Feature = {
+    key: "dental_care",
+    description: "Saúde bucal: consulta odontológica com odontograma, plano de tratamento, especialidades do CEO, prótese, ficha LEDI de atendimento odontológico e painéis do CEO e da equipe de saúde bucal",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const DC_ON: Feature = { ...DC_OFF, enabled: true, usable: true, changedAt: "2026-10-30T13:00:00Z", changedBy: "dev@local" };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ DC_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("dental_care")).not.toBeNull();
+    expect(screen.getByText("Saúde bucal")).not.toBeNull();
+    expect(screen.getByText(DC_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("sem clinical_record: ligada, falta o prontuário, com a frase do módulo 19", async () => {
+    const user = userEvent.setup();
+    const DC_BLOCKED: Feature = { ...DC_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ DC_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ DC_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: DC_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar dental_care" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "dental_care", enabled: true });
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "dental_care ligada, mas ainda não utilizável — falta: prontuário da atenção primária (clinical_record) desligado."
+    );
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+  });
+
+  it("com o prontuário, liga utilizável e desliga com dois cliques; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ DC_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? DC_ON : { ...DC_OFF, changedAt: "2026-10-30T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar dental_care" }));
+    expect((await screen.findByRole("status")).textContent).toBe("dental_care ligada e utilizável.");
+    expect(screen.getByText("nada")).not.toBeNull();
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar dental_care" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "dental_care", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("dental_care desligada.");
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("produção: aparece e nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ DC_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("dental_care")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

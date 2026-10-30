@@ -105,7 +105,11 @@ const FEATURE_LABELS: Record<string, string> = {
   care_regulation: "Regulação municipal",
   // Módulo 27a (ADR 0045): sem pré-requisito (a receita externa não depende
   // do prontuário). Todos os ambientes, sem simulado.
-  pharmacy: "Farmácia e almoxarifado"
+  pharmacy: "Farmácia e almoxarifado",
+  // Módulo 28 (ADR 0046): exige clinical_record (missing:
+  // clinical_record_disabled, já traduzido acima); a consulta odontológica é
+  // um tipo da consulta do 19a. Todos os ambientes, sem simulado.
+  dental_care: "Saúde bucal"
 };
 
 export function featureLabel(key: string): string | null {
