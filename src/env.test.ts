@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiBase, expectedOrigin, maintenanceEnv } from "./env";
 
 describe("maintenanceEnv", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("é development por padrão quando o valor não está definido (fora de um build de produção)", () => {
     expect(maintenanceEnv(undefined, false)).toBe("development");
   });
@@ -17,6 +21,10 @@ describe("maintenanceEnv", () => {
   // vira padrão. O parâmetro `isProd` é injetado — nunca lê
   // import.meta.env.PROD de verdade neste teste.
   it("recusa valor ausente em build de produção — falha alto em vez de assumir development", () => {
+    // O default do parâmetro lê VITE_MAINTENANCE_ENV do ambiente; no bin/test
+    // o compose define "development". Com "" o default vira vazio e o teste
+    // não depende do ambiente de quem roda.
+    vi.stubEnv("VITE_MAINTENANCE_ENV", "");
     expect(() => maintenanceEnv(undefined, true)).toThrow("VITE_MAINTENANCE_ENV é obrigatória em build de produção");
   });
 
