@@ -8,6 +8,7 @@ import { PSC_MOCK_NOTICE, PSC_REAL_NOTICE } from "../lib/signature";
 import { SNCR_MOCK_NOTICE, SNCR_REAL_NOTICE } from "../lib/sncr";
 import { FAKE_LAB_NOTICE } from "../lib/exams";
 import { FAKE_MIDDLEWARE_NOTICE } from "../lib/lab";
+import { RNDS_MOCK_NOTICE } from "../lib/rnds";
 
 afterEach(cleanup);
 
@@ -1879,5 +1880,60 @@ describe("FeaturesTab — sala de vacina (módulo 29)", () => {
     await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
     expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "vaccination", enabled: false });
     expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+});
+
+describe("FeaturesTab — RNDS simulada (módulo 29)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const SEND_ON: Feature = {
+    key: "rnds_immunization", description: "Envio das doses aplicadas à RNDS (RIA-R 2.0)",
+    enabled: true, usable: true, missing: [], changedAt: "2026-11-02T13:00:00Z", changedBy: "dev@local"
+  };
+  const MOCK_OFF: Feature = {
+    key: "rnds_mock", description: "RNDS simulada (desenvolvimento) — envio sem validade",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const MOCK_ON: Feature = { ...MOCK_OFF, enabled: true, usable: true, changedAt: "2026-11-02T14:00:00Z", changedBy: "dev@local" };
+
+  it("ligar rnds_mock por dois cliques: após o refetch a aba avisa", async () => {
+    const user = userEvent.setup();
+    let listed: Feature[] = [ SEND_ON, MOCK_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ SEND_ON, MOCK_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: MOCK_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("RNDS simulada (desenvolvimento)")).not.toBeNull();
+    expect(screen.queryByRole("note", { name: "modo da RNDS" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "ligar" }));
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar rnds_mock" }));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "rnds_mock", enabled: true });
+    expect((await screen.findByRole("note", { name: "modo da RNDS" })).textContent).toBe(RNDS_MOCK_NOTICE);
+  });
+
+  it("rnds_mock ligado sem o envio: o aviso aparece", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      { ...SEND_ON, enabled: false, usable: false },
+      { ...MOCK_ON, usable: false, missing: [ "rnds_immunization_disabled" ] }
+    ])));
+    renderTab();
+    expect((await screen.findByRole("note", { name: "modo da RNDS" })).textContent).toBe(RNDS_MOCK_NOTICE);
+    expect(screen.getByText("envio das vacinas à RNDS (rnds_immunization) desligado")).not.toBeNull();
+  });
+
+  it("produção: sem rnds_mock, nenhum aviso de RNDS simulada", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ SEND_ON ], { recordMode: "record" })));
+    renderTab();
+    expect(await screen.findByText("rnds_immunization")).not.toBeNull();
+    expect(screen.queryByRole("note", { name: "modo da RNDS" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/SIMULAD|undefined|null/);
   });
 });

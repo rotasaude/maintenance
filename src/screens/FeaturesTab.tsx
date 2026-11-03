@@ -20,6 +20,7 @@ import { SncrPlatformPanel } from "./SncrPlatformPanel";
 import { CONTROLLED_KEY, SNCR_MOCK_NOTICE, sncrModeNotice } from "../lib/sncr";
 import { FAKE_LAB_NOTICE, fakeLabOn } from "../lib/exams";
 import { FAKE_MIDDLEWARE_NOTICE, fakeMiddlewareOn } from "../lib/lab";
+import { RNDS_MOCK_NOTICE, rndsMockOn } from "../lib/rnds";
 import { PecConfigPanel } from "./PecConfigPanel";
 import { PEC_EXTERNAL_KEY } from "../lib/pec";
 
@@ -133,6 +134,8 @@ export function FeaturesTab({ slug }: { slug: string }) {
   const labSimulated = city ? fakeLabOn(city.features) : false;
   // Módulo 21b: aviso pelo estado LIGADO de fake_middleware (ausente em produção).
   const middlewareSimulated = city ? fakeMiddlewareOn(city.features) : false;
+  // Módulo 29: aviso pelo estado LIGADO de rnds_mock (ausente em produção).
+  const rndsSimulated = city ? rndsMockOn(city.features) : false;
   const ibge = profileErr ? `indisponível (${profileErr.code})` : ibgeCodeText(city?.profile?.ibgeCode);
 
   return (
@@ -176,6 +179,11 @@ export function FeaturesTab({ slug }: { slug: string }) {
             {middlewareSimulated && (
               <p role="note" aria-label="modo do middleware" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
                 {FAKE_MIDDLEWARE_NOTICE}
+              </p>
+            )}
+            {rndsSimulated && (
+              <p role="note" aria-label="modo da RNDS" style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "var(--warn)" }}>
+                {RNDS_MOCK_NOTICE}
               </p>
             )}
             {done && <p role="status" style={{ margin: 0, fontSize: 12.5, color: "var(--ok)" }}>{done}</p>}
