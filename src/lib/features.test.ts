@@ -273,3 +273,23 @@ describe("módulo 28", () => {
     expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 29", () => {
+  it("módulo 29: nomes; missing desconhecido cru", () => {
+    expect(featureLabel("vaccination")).toBe("Sala de vacina");
+    expect(featureLabel("rnds_immunization")).toBe("Envio das vacinas à RNDS (Ministério da Saúde)");
+    expect(featureLabel("rnds_mock")).toBe("RNDS simulada (desenvolvimento)");
+    expect(missingText("rnds_cnes_missing")).toBe("rnds_cnes_missing");
+  });
+
+  it("rnds_immunization: sala, credencial ausente e recusada em português", () => {
+    expect(missingSummary([ "vaccination_disabled", "credential_missing:rnds" ]))
+      .toBe("sala de vacina (vaccination) desligada; credencial RNDS não cadastrada");
+    expect(missingText("credential_unauthorized:rnds")).toBe("credencial RNDS recusada no último teste");
+    expect(missingText("rnds_immunization_disabled")).toBe("envio das vacinas à RNDS (rnds_immunization) desligado");
+  });
+
+  it("catálogo de vacinas em revisão (só produção): frase própria", () => {
+    expect(missingText("vaccination_catalog_under_review")).toBe("catálogo de imunobiológicos em revisão");
+  });
+});

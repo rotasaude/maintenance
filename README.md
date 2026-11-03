@@ -302,6 +302,17 @@ Desligar esconde as telas; consultas, odontogramas, planos e próteses ficam
 por aqui. Ordem de deploy: api → dashboard → maintenance; contra um api sem o
 28, a chave só não aparece.
 
+**Sala de vacina (módulo 29).** Três interruptores na mesma lista:
+`vaccination` ("Sala de vacina"), `rnds_immunization` ("Envio das vacinas à RNDS
+(Ministério da Saúde)") e `rnds_mock` ("RNDS simulada (desenvolvimento)").
+`vaccination` só em cidade `record` (cidade `integrated` vacina no PEC, que já
+envia à RNDS). `rnds_immunization` exige a credencial `rnds`, gravada pelo
+administrador municipal no dashboard (certificado A1; nunca passa por aqui).
+`rnds_mock` só existe fora de produção, com aviso na aba. Desligar não apaga
+doses, cadernetas nem estoque (a exclusão LGPD retém a dose). Ordem de deploy:
+api → dashboard → wpda → maintenance; contra um api sem o 29, as chaves só não
+aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

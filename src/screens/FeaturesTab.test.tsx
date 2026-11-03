@@ -1815,3 +1815,69 @@ describe("FeaturesTab — saúde bucal (módulo 28)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — sala de vacina (módulo 29)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const VAC_OFF: Feature = {
+    key: "vaccination", description: "Sala de vacina: caderneta conferida, registro da dose, estoque de imunobiológicos, cadeia de frio e ESAVI",
+    enabled: false, usable: false, missing: [ "record_mode_not_record" ], changedAt: null, changedBy: null
+  };
+  const SEND_OFF: Feature = {
+    key: "rnds_immunization", description: "Envio das doses aplicadas à RNDS (RIA-R 2.0)",
+    enabled: false, usable: false, missing: [ "vaccination_disabled", "credential_missing:rnds" ], changedAt: null, changedBy: null
+  };
+
+  it("vaccination fora do modo record: ligada, falta o modo, com a frase do 19a", async () => {
+    const user = userEvent.setup();
+    const VAC_BLOCKED: Feature = { ...VAC_OFF, enabled: true, changedAt: "2026-11-02T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ VAC_OFF, SEND_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ VAC_BLOCKED, SEND_OFF ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: VAC_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("Sala de vacina")).not.toBeNull();
+    expect(screen.getByText("Envio das vacinas à RNDS (Ministério da Saúde)")).not.toBeNull();
+    expect(screen.getByText("sala de vacina (vaccination) desligada; credencial RNDS não cadastrada")).not.toBeNull();
+    await user.click(screen.getAllByRole("button", { name: "ligar" })[0]);
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar vaccination" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "vaccination", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "vaccination ligada, mas ainda não utilizável — falta: modo de prontuário diferente de record."
+    );
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("com o modo record: liga utilizável e desliga com dois cliques", async () => {
+    const user = userEvent.setup();
+    const VAC_ON: Feature = { ...VAC_OFF, enabled: true, usable: true, missing: [], changedAt: "2026-11-02T13:00:00Z", changedBy: "dev@local" };
+    let listed: Feature[] = [ { ...VAC_OFF, missing: [] } ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? VAC_ON : { ...VAC_OFF, missing: [] } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar vaccination" }));
+    expect((await screen.findByRole("status")).textContent).toBe("vaccination ligada e utilizável.");
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar vaccination" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "vaccination", enabled: false });
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+});

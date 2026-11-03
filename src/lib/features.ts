@@ -59,6 +59,14 @@ const MISSING_LABELS: Record<string, string> = {
   // (municipal_lab_disabled, abaixo) e são independentes entre si.
   municipal_lab_disabled: "laboratório municipal (municipal_lab) desligado",
   lab_hl7_inbound_disabled: "entrada de resultados por HL7 (lab_hl7_inbound) desligada",
+  // Módulo 29 (ADR 0047): rnds_immunization exige vaccination e a credencial
+  // rnds; rnds_mock exige rnds_immunization. Em produção, o envio também espera
+  // o catálogo de imunobiológicos revisado.
+  vaccination_disabled: "sala de vacina (vaccination) desligada",
+  rnds_immunization_disabled: "envio das vacinas à RNDS (rnds_immunization) desligado",
+  "credential_missing:rnds": "credencial RNDS não cadastrada",
+  "credential_unauthorized:rnds": "credencial RNDS recusada no último teste",
+  vaccination_catalog_under_review: "catálogo de imunobiológicos em revisão",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -109,7 +117,13 @@ const FEATURE_LABELS: Record<string, string> = {
   // Módulo 28 (ADR 0046): exige clinical_record (missing:
   // clinical_record_disabled, já traduzido acima); a consulta odontológica é
   // um tipo da consulta do 19a. Todos os ambientes, sem simulado.
-  dental_care: "Saúde bucal"
+  dental_care: "Saúde bucal",
+  // Módulo 29 (ADR 0047): vaccination exige record_mode:record; rnds_immunization
+  // exige vaccination e a credencial rnds da cidade (gravada no dashboard);
+  // rnds_mock só fora de produção.
+  vaccination: "Sala de vacina",
+  rnds_immunization: "Envio das vacinas à RNDS (Ministério da Saúde)",
+  rnds_mock: "RNDS simulada (desenvolvimento)"
 };
 
 export function featureLabel(key: string): string | null {
