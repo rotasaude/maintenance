@@ -313,6 +313,21 @@ doses, cadernetas nem estoque (a exclusão LGPD retém a dose). Ordem de deploy:
 api → dashboard → wpda → maintenance; contra um api sem o 29, as chaves só não
 aparecem.
 
+**Transporte sanitário e TFD (módulo 30).** Dois interruptores na mesma lista:
+`sanitary_transport` ("Transporte sanitário") e `tfd` ("Tratamento Fora de
+Domicílio (TFD)"). `sanitary_transport` liga no dashboard a central de
+transporte (frota, motoristas, destinos, viagens, séries, lista de passageiros)
+e a tela do motorista, sem pré-requisito. `tfd` liga o laudo, a comissão, os
+trechos, a ajuda de custo, o pagamento registrado, a prestação de contas e a
+produção no BPA, e exige `sanitary_transport` e `clinical_record` (só cidades em
+modo `record`). A aba nunca liga um pelo outro nem desliga o TFD junto com o
+transporte: desligar o transporte deixa o TFD "ligada, falta pré-requisito".
+Papéis, destinos e o CNES do TFD são configurados no dashboard. Existem em todos
+os ambientes e não têm simulado. Desligar esconde as telas; viagens, processos e
+pagamentos ficam (a exclusão LGPD retém o TFD). Nenhum dado de cidadão passa por
+aqui. Ordem de deploy: api → dashboard → wpda → maintenance; contra um api sem o
+30, as chaves só não aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

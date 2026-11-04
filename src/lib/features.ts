@@ -67,6 +67,8 @@ const MISSING_LABELS: Record<string, string> = {
   "credential_missing:rnds": "credencial RNDS não cadastrada",
   "credential_unauthorized:rnds": "credencial RNDS recusada no último teste",
   vaccination_catalog_under_review: "catálogo de imunobiológicos em revisão",
+  // Módulo 30 (ADR 0048): tfd exige sanitary_transport e clinical_record (frase do 19b, acima).
+  sanitary_transport_disabled: "transporte sanitário (sanitary_transport) desligado",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -123,7 +125,12 @@ const FEATURE_LABELS: Record<string, string> = {
   // rnds_mock só fora de produção.
   vaccination: "Sala de vacina",
   rnds_immunization: "Envio das vacinas à RNDS (Ministério da Saúde)",
-  rnds_mock: "RNDS simulada (desenvolvimento)"
+  rnds_mock: "RNDS simulada (desenvolvimento)",
+  // Módulo 30 (ADR 0048): sanitary_transport sem pré-requisito; tfd exige
+  // sanitary_transport e clinical_record (o laudo nasce da consulta). Todos os
+  // ambientes, sem simulado.
+  sanitary_transport: "Transporte sanitário",
+  tfd: "Tratamento Fora de Domicílio (TFD)"
 };
 
 export function featureLabel(key: string): string | null {

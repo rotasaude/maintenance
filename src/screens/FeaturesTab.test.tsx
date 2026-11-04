@@ -1937,3 +1937,91 @@ describe("FeaturesTab — RNDS simulada (módulo 29)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULAD|undefined|null/);
   });
 });
+
+describe("FeaturesTab — transporte sanitário e TFD (módulo 30)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const SAN_OFF: Feature = {
+    key: "sanitary_transport", description: "Transporte sanitário: frota, motoristas, destinos, viagens com lista de passageiros, séries recorrentes e tela do motorista",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const SAN_ON: Feature = { ...SAN_OFF, enabled: true, usable: true, changedAt: "2026-11-03T13:00:00Z", changedBy: "dev@local" };
+  const TFD_OFF: Feature = {
+    key: "tfd", description: "Tratamento Fora de Domicílio: laudo, comissão, trechos, ajuda de custo, pagamento registrado, prestação de contas e BPA",
+    enabled: false, usable: false, missing: [ "sanitary_transport_disabled", "clinical_record_disabled" ], changedAt: null, changedBy: null
+  };
+  const TFD_ON: Feature = { ...TFD_OFF, enabled: true, usable: true, missing: [], changedAt: "2026-11-03T13:05:00Z", changedBy: "dev@local" };
+
+  it("tfd sem transporte e sem prontuário: ligada, falta os dois, em português", async () => {
+    const user = userEvent.setup();
+    const TFD_BLOCKED: Feature = { ...TFD_OFF, enabled: true, changedAt: "2026-11-03T13:00:00Z", changedBy: "dev@local" };
+    let listed = [ SAN_OFF, TFD_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ SAN_OFF, TFD_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: TFD_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    expect(await screen.findByText("Transporte sanitário")).not.toBeNull();
+    expect(screen.getByText("Tratamento Fora de Domicílio (TFD)")).not.toBeNull();
+    await user.click(screen.getAllByRole("button", { name: "ligar" })[1]);
+    await user.click(await screen.findByRole("button", { name: "confirmar: ligar tfd" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "tfd", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "tfd ligada, mas ainda não utilizável — falta: transporte sanitário (sanitary_transport) desligado; prontuário da atenção primária (clinical_record) desligado."
+    );
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("sanitary_transport em cidade integrated: liga utilizável e desliga com dois cliques", async () => {
+    const user = userEvent.setup();
+    let listed = [ SAN_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? SAN_ON : SAN_OFF ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar sanitary_transport" }));
+    expect((await screen.findByRole("status")).textContent).toBe("sanitary_transport ligada e utilizável.");
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar sanitary_transport" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables).toEqual({ citySlug: "sp", key: "sanitary_transport", enabled: false });
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("desligar sanitary_transport com tfd ligado: só a chave pedida; o tfd fica faltando", async () => {
+    const user = userEvent.setup();
+    const TFD_ORPHAN: Feature = { ...TFD_ON, usable: false, missing: [ "sanitary_transport_disabled" ] };
+    let listed = [ SAN_ON, TFD_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ SAN_OFF, TFD_ORPHAN ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: SAN_OFF } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar sanitary_transport" }));
+    await waitFor(() => expect(screen.getByText("transporte sanitário (sanitary_transport) desligado")).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables).toEqual({ citySlug: "sp", key: "sanitary_transport", enabled: false });
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+  });
+});

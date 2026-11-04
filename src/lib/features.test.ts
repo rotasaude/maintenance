@@ -293,3 +293,16 @@ describe("módulo 29", () => {
     expect(missingText("vaccination_catalog_under_review")).toBe("catálogo de imunobiológicos em revisão");
   });
 });
+
+describe("módulo 30", () => {
+  it("módulo 30: nomes; missing desconhecido cru", () => {
+    expect(featureLabel("sanitary_transport")).toBe("Transporte sanitário");
+    expect(featureLabel("tfd")).toBe("Tratamento Fora de Domicílio (TFD)");
+    expect(missingText("tfd_billing_unit_missing")).toBe("tfd_billing_unit_missing");
+  });
+
+  it("tfd: transporte e prontuário em português, sem redefinir a frase do 19b", () => {
+    expect(missingSummary([ "sanitary_transport_disabled", "clinical_record_disabled" ]))
+      .toBe("transporte sanitário (sanitary_transport) desligado; prontuário da atenção primária (clinical_record) desligado");
+  });
+});
