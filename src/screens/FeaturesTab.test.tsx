@@ -2025,3 +2025,116 @@ describe("FeaturesTab — transporte sanitário e TFD (módulo 30)", () => {
     expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
   });
 });
+
+describe("FeaturesTab — atenção psicossocial (módulo 31)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const PSY_OFF: Feature = {
+    key: "psychosocial_care",
+    description: "Atenção psicossocial (CAPS): matrícula, PTS, ações, grupos, acolhimento noturno, RAAS do mês, matriciamento e BPA-C",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const PSY_ON: Feature = { ...PSY_OFF, enabled: true, usable: true, changedAt: "2026-11-04T13:00:00Z", changedBy: "dev@local" };
+  const CR_ON: Feature = {
+    key: "clinical_record", description: "Prontuário da atenção primária", enabled: true, usable: true,
+    missing: [], changedAt: "2026-10-06T13:00:00Z", changedBy: "dev@local"
+  };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ PSY_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("psychosocial_care")).not.toBeNull();
+    expect(screen.getByText("Atenção psicossocial (CAPS)")).not.toBeNull();
+    expect(screen.getByText(PSY_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("psychosocial_care sem prontuário: ligada, falta o prontuário, com a frase do 19b", async () => {
+    const user = userEvent.setup();
+    const PSY_BLOCKED: Feature = { ...PSY_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ PSY_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ PSY_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: PSY_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar psychosocial_care" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "psychosocial_care", enabled: true });
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "psychosocial_care ligada, mas ainda não utilizável — falta: prontuário da atenção primária (clinical_record) desligado."
+    );
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("com o prontuário, liga utilizável e desliga com dois cliques; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ PSY_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ body.variables.enabled === true ? PSY_ON : { ...PSY_OFF, changedAt: "2026-11-04T14:00:00Z", changedBy: "dev@local" } ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: listed[0] } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar psychosocial_care" }));
+    expect((await screen.findByRole("status")).textContent).toBe("psychosocial_care ligada e utilizável.");
+    await user.click(await screen.findByRole("button", { name: "desligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar psychosocial_care" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables)
+      .toEqual({ citySlug: "sp", key: "psychosocial_care", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("psychosocial_care desligada.");
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("desligar clinical_record com psychosocial_care ligado: só a chave pedida; o CAPS fica faltando", async () => {
+    const user = userEvent.setup();
+    const CR_OFF: Feature = { ...CR_ON, enabled: false, usable: false, changedAt: "2026-11-04T15:00:00Z" };
+    const PSY_ORPHAN: Feature = { ...PSY_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ CR_ON, PSY_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ CR_OFF, PSY_ORPHAN ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: CR_OFF } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar clinical_record" }));
+    await waitFor(() => expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "clinical_record", enabled: false });
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+  });
+
+  it("psychosocial_care ligado: nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ CR_ON, PSY_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("psychosocial_care")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

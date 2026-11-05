@@ -306,3 +306,15 @@ describe("módulo 30", () => {
       .toBe("transporte sanitário (sanitary_transport) desligado; prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 31", () => {
+  it("módulo 31: nome; missing desconhecido cru", () => {
+    expect(featureLabel("psychosocial_care")).toBe("Atenção psicossocial (CAPS)");
+    expect(missingText("caps_unit_missing")).toBe("caps_unit_missing");
+  });
+
+  it("psychosocial_care: o prontuário com a frase do 19b, sem redefinir", () => {
+    expect(missingSummary([ "clinical_record_disabled" ]))
+      .toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+});

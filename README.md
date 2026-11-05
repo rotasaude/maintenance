@@ -328,6 +328,17 @@ pagamentos ficam (a exclusão LGPD retém o TFD). Nenhum dado de cidadão passa 
 aqui. Ordem de deploy: api → dashboard → wpda → maintenance; contra um api sem o
 30, as chaves só não aparecem.
 
+**Atenção psicossocial (módulo 31).** O interruptor `psychosocial_care`
+("Atenção psicossocial (CAPS)") liga no dashboard o CAPS: matrícula, PTS, ações,
+grupos, acolhimento noturno, matriciamento, RAAS do mês e o vínculo na tela da
+UBS. Exige `clinical_record`, então só vale em cidades em modo `record`. Desligar
+o prontuário deixa o CAPS como "ligada, falta pré-requisito", e a aba não desliga
+um pelo outro. Papéis, modalidade, equipe e leitos são configurados no dashboard;
+existe em todos os ambientes, sem simulado. Desligar esconde as telas, mas
+matrículas, PTS, ações e RAAS ficam (a exclusão LGPD retém o prontuário do CAPS).
+Nada do CAPS chega ao cidadão nem passa por aqui. Ordem de deploy: api →
+dashboard → maintenance; contra um api sem o 31, a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
