@@ -318,3 +318,16 @@ describe("módulo 31", () => {
       .toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 32a", () => {
+  it("módulo 32a: nomes; missing e chave desconhecidos crus", () => {
+    expect(featureLabel("urgency_care")).toBe("Urgência e emergência (UPA)");
+    expect(featureLabel("waiting_room_display")).toBe("Painel de chamada na TV da sala de espera");
+    expect(missingText("upa_unit_missing")).toBe("upa_unit_missing");
+  });
+
+  it("urgency_care: o prontuário com a frase do 19b, sem redefinir", () => {
+    expect(missingSummary([ "clinical_record_disabled" ]))
+      .toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+});

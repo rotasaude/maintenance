@@ -2138,3 +2138,149 @@ describe("FeaturesTab — atenção psicossocial (módulo 31)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — urgência e painel da TV (módulo 32a)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const URG_OFF: Feature = {
+    key: "urgency_care",
+    description: "Urgência (UPA): chegada com senha, paciente não identificado, classificação de risco em 5 cores pelo protocolo da cidade, fila por cor, atendimento médico, desfecho, contrarreferência e BPA",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const URG_ON: Feature = { ...URG_OFF, enabled: true, usable: true, changedAt: "2026-11-05T13:00:00Z", changedBy: "dev@local" };
+  const TV_OFF: Feature = {
+    key: "waiting_room_display",
+    description: "Painel de chamada da sala de espera (UPA e UBS): senha no check-in, local da chamada e TV pareada, sem dado pessoal",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const TV_ON: Feature = { ...TV_OFF, enabled: true, usable: true, changedAt: "2026-11-05T13:05:00Z", changedBy: "dev@local" };
+  const CR_ON: Feature = {
+    key: "clinical_record", description: "Prontuário da atenção primária", enabled: true, usable: true,
+    missing: [], changedAt: "2026-10-06T13:00:00Z", changedBy: "dev@local"
+  };
+
+  it("aparecem com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ URG_OFF, TV_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("urgency_care")).not.toBeNull();
+    expect(screen.getByText("Urgência e emergência (UPA)")).not.toBeNull();
+    expect(screen.getByText(URG_OFF.description)).not.toBeNull();
+    expect(screen.getByText("waiting_room_display")).not.toBeNull();
+    expect(screen.getByText("Painel de chamada na TV da sala de espera")).not.toBeNull();
+    expect(screen.getByText(TV_OFF.description)).not.toBeNull();
+    expect(screen.getAllByText("desligada")).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("urgency_care sem prontuário: ligada, falta o prontuário, com a frase do 19b", async () => {
+    const user = userEvent.setup();
+    const URG_BLOCKED: Feature = { ...URG_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ URG_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ URG_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: URG_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar urgency_care" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "urgency_care", enabled: true });
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "urgency_care ligada, mas ainda não utilizável — falta: prontuário da atenção primária (clinical_record) desligado."
+    );
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("waiting_room_display em cidade integrated: liga utilizável, sem pré-requisito", async () => {
+    const user = userEvent.setup();
+    let listed = [ TV_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ TV_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: TV_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar waiting_room_display" }));
+    expect((await screen.findByRole("status")).textContent).toBe("waiting_room_display ligada e utilizável.");
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "waiting_room_display", enabled: true });
+    expect(screen.queryByText("ligada, falta pré-requisito")).toBeNull();
+  });
+
+  it("com o prontuário, liga a urgência utilizável e desliga com dois cliques; só a chave pedida; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ URG_OFF, TV_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        const urg = body.variables.enabled === true ? URG_ON : { ...URG_OFF, changedAt: "2026-11-05T14:00:00Z", changedBy: "dev@local" };
+        listed = [ urg, TV_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: urg } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar urgency_care" }));
+    expect((await screen.findByRole("status")).textContent).toBe("urgency_care ligada e utilizável.");
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar urgency_care" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables)
+      .toEqual({ citySlug: "sp", key: "urgency_care", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("urgency_care desligada.");
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("desligar clinical_record com urgency_care ligado: só a chave pedida; a urgência fica faltando, a TV não muda", async () => {
+    const user = userEvent.setup();
+    const CR_OFF: Feature = { ...CR_ON, enabled: false, usable: false, changedAt: "2026-11-05T15:00:00Z" };
+    const URG_ORPHAN: Feature = { ...URG_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ CR_ON, URG_ON, TV_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ CR_OFF, URG_ORPHAN, TV_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: CR_OFF } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar clinical_record" }));
+    await waitFor(() => expect(screen.getByText("prontuário da atenção primária (clinical_record) desligado")).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "clinical_record", enabled: false });
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(1);
+  });
+
+  it("urgência e TV ligadas: nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ CR_ON, URG_ON, TV_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("urgency_care")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

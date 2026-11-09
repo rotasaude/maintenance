@@ -132,7 +132,10 @@ const FEATURE_LABELS: Record<string, string> = {
   sanitary_transport: "Transporte sanitário",
   tfd: "Tratamento Fora de Domicílio (TFD)",
   // Módulo 31 (ADR 0049): exige clinical_record (missing: clinical_record_disabled, já traduzido acima). Todos os ambientes, sem simulado.
-  psychosocial_care: "Atenção psicossocial (CAPS)"
+  psychosocial_care: "Atenção psicossocial (CAPS)",
+  // Módulo 32a (ADR 0050): urgency_care exige clinical_record (missing: clinical_record_disabled, já traduzido acima); waiting_room_display é independente (UPA e UBS). Todos os ambientes, sem simulado. urgency_stock_deduction é do 32b.
+  urgency_care: "Urgência e emergência (UPA)",
+  waiting_room_display: "Painel de chamada na TV da sala de espera"
 };
 
 export function featureLabel(key: string): string | null {

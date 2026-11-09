@@ -339,6 +339,21 @@ matrículas, PTS, ações e RAAS ficam (a exclusão LGPD retém o prontuário do
 Nada do CAPS chega ao cidadão nem passa por aqui. Ordem de deploy: api →
 dashboard → maintenance; contra um api sem o 31, a chave só não aparece.
 
+**Urgência e painel da TV (módulo 32a).** O interruptor `urgency_care`
+("Urgência e emergência (UPA)") liga no dashboard a recepção, a classificação de
+risco por cor, a fila, o atendimento médico, o desfecho e o painel do gestor nas
+unidades `upa`. Exige `clinical_record`, então só vale em cidades em modo
+`record`. Desligar o prontuário deixa a urgência como "ligada, falta
+pré-requisito", e a aba não desliga uma pela outra. O interruptor
+`waiting_room_display` ("Painel de chamada na TV da sala de espera") é
+independente e vale para UPA e UBS: senha na chegada, local na chamada e a TV
+pareada pelo dashboard. Protocolo de urgência, prefixo da senha, locais de
+chamada e TVs são configurados no dashboard; as duas chaves existem em todos os
+ambientes, sem simulado. Desligar esconde as telas, mas encontros,
+classificações, desfechos, chamadas e TVs ficam (a exclusão LGPD retém o
+encontro com classificação ou consulta). Ordem de deploy: api → dashboard →
+maintenance; contra um api sem o 32a, as chaves só não aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
