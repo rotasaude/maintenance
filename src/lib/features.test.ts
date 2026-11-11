@@ -331,3 +331,22 @@ describe("módulo 32a", () => {
       .toBe("prontuário da atenção primária (clinical_record) desligado");
   });
 });
+
+describe("módulo 32b", () => {
+  it("módulo 32b: nome e frases; missing desconhecido cru", () => {
+    expect(featureLabel("urgency_stock_deduction")).toBe("Baixa de estoque na medicação da UPA");
+    expect(missingText("urgency_care_disabled")).toBe("urgência e emergência (urgency_care) desligada");
+    expect(missingText("pharmacy_disabled")).toBe("farmácia e almoxarifado (pharmacy) desligada");
+    expect(missingText("upa_stock_location_missing")).toBe("upa_stock_location_missing");
+  });
+
+  it("urgency_stock_deduction: os dois pré-requisitos na ordem do requires", () => {
+    expect(missingSummary([ "urgency_care_disabled", "pharmacy_disabled" ]))
+      .toBe("urgência e emergência (urgency_care) desligada; farmácia e almoxarifado (pharmacy) desligada");
+  });
+
+  it("os nomes do 27a e do 32a não mudam", () => {
+    expect(featureLabel("pharmacy")).toBe("Farmácia e almoxarifado");
+    expect(featureLabel("urgency_care")).toBe("Urgência e emergência (UPA)");
+  });
+});

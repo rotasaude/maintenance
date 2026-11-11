@@ -2284,3 +2284,136 @@ describe("FeaturesTab — urgência e painel da TV (módulo 32a)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — baixa de estoque na medicação da UPA (módulo 32b)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const DED_OFF: Feature = {
+    key: "urgency_stock_deduction",
+    description: "Atendimentos da UPA com prescrição de medicação atualizam o estoque",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const DED_ON: Feature = { ...DED_OFF, enabled: true, usable: true, changedAt: "2026-11-10T13:00:00Z", changedBy: "dev@local" };
+  const URG_ON: Feature = {
+    key: "urgency_care", description: "Urgência (UPA)", enabled: true, usable: true,
+    missing: [], changedAt: "2026-11-05T13:00:00Z", changedBy: "dev@local"
+  };
+  const PH_ON: Feature = {
+    key: "pharmacy", description: "Farmácia e almoxarifado", enabled: true, usable: true,
+    missing: [], changedAt: "2026-10-30T13:00:00Z", changedBy: "dev@local"
+  };
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ DED_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("urgency_stock_deduction")).not.toBeNull();
+    expect(screen.getByText("Baixa de estoque na medicação da UPA")).not.toBeNull();
+    expect(screen.getByText(DED_OFF.description)).not.toBeNull();
+    expect(screen.getByText("desligada")).not.toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("com urgência e farmácia, liga utilizável e desliga com dois cliques; só a chave pedida; nada fala em apagar", async () => {
+    const user = userEvent.setup();
+    let listed = [ URG_ON, PH_ON, DED_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        const ded = body.variables.enabled === true ? DED_ON : { ...DED_OFF, changedAt: "2026-11-10T14:00:00Z", changedBy: "dev@local" };
+        listed = [ URG_ON, PH_ON, ded ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: ded } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar urgency_stock_deduction" }));
+    expect((await screen.findByRole("status")).textContent).toBe("urgency_stock_deduction ligada e utilizável.");
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "urgency_stock_deduction", enabled: true });
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[2]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar urgency_stock_deduction" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(2));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[1]).variables)
+      .toEqual({ citySlug: "sp", key: "urgency_stock_deduction", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("urgency_stock_deduction desligada.");
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("baixa em cidade integrated: ligada, falta a urgência (e a farmácia), sem a frase do prontuário", async () => {
+    const user = userEvent.setup();
+    const DED_BLOCKED: Feature = { ...DED_ON, usable: false, missing: [ "urgency_care_disabled", "pharmacy_disabled" ] };
+    let listed = [ DED_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ DED_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: DED_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar urgency_stock_deduction" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(await screen.findByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "urgency_stock_deduction ligada, mas ainda não utilizável — falta: urgência e emergência (urgency_care) desligada; farmácia e almoxarifado (pharmacy) desligada."
+    );
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/clinical_record|undefined|apaga|exclu/i);
+  });
+
+  it("desligar pharmacy com a baixa ligada: só a chave pedida; a baixa fica faltando a farmácia", async () => {
+    const user = userEvent.setup();
+    const PH_OFF: Feature = { ...PH_ON, enabled: false, usable: false, changedAt: "2026-11-10T15:00:00Z" };
+    const DED_ORPHAN: Feature = { ...DED_ON, usable: false, missing: [ "pharmacy_disabled" ] };
+    let listed = [ URG_ON, PH_ON, DED_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ URG_ON, PH_OFF, DED_ORPHAN ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: PH_OFF } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[1]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar pharmacy" }));
+    await waitFor(() => expect(screen.getByText("farmácia e almoxarifado (pharmacy) desligada")).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "pharmacy", enabled: false });
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(1);
+  });
+
+  it("desligar a urgência com a baixa ligada: a baixa mostra só a urgência, nunca a frase do prontuário", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([
+      { ...URG_ON, usable: false, missing: [ "clinical_record_disabled" ] },
+      PH_ON,
+      { ...DED_ON, usable: false, missing: [ "urgency_care_disabled" ] }
+    ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("urgência e emergência (urgency_care) desligada")).not.toBeNull();
+    expect(screen.getAllByText("prontuário da atenção primária (clinical_record) desligado")).toHaveLength(1);
+    expect(screen.getAllByText("ligada, falta pré-requisito")).toHaveLength(2);
+  });
+
+  it("baixa ligada: nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ URG_ON, PH_ON, DED_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("urgency_stock_deduction")).not.toBeNull();
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

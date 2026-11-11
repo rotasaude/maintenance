@@ -354,6 +354,21 @@ classificações, desfechos, chamadas e TVs ficam (a exclusão LGPD retém o
 encontro com classificação ou consulta). Ordem de deploy: api → dashboard →
 maintenance; contra um api sem o 32a, as chaves só não aparecem.
 
+**Baixa de estoque na medicação da UPA (módulo 32b).** O interruptor
+`urgency_stock_deduction` ("Baixa de estoque na medicação da UPA") faz cada
+medicação checada pela enfermagem na UPA dar baixa no estoque `unit` da UPA,
+pelo razão da farmácia (lote por FEFO); sem saldo, a checagem é gravada e nasce
+uma falta para a farmácia conciliar, e o estoque nunca fica negativo. Exige
+`urgency_care` e `pharmacy` ligados e utilizáveis; com um deles desligado, a
+baixa fica "ligada, falta pré-requisito", e a aba não desliga uma pela outra.
+Com o prontuário desligado, a falta mostrada é a da urgência. Desligada,
+observação, prescrição e checagem funcionam igual, só sem lote e sem movimento
+de estoque. Leitos, prescrição e a tela de faltas da UPA ficam no dashboard; a
+chave existe em todos os ambientes, sem simulado. Desligar não desfaz nada: as
+administrações, os movimentos já gravados e as faltas ficam, e as faltas antigas
+seguem visíveis para a farmácia. Ordem de deploy: api → dashboard → maintenance;
+contra um api sem o 32b, a chave só não aparece.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

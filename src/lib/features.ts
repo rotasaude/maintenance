@@ -69,6 +69,9 @@ const MISSING_LABELS: Record<string, string> = {
   vaccination_catalog_under_review: "catálogo de imunobiológicos em revisão",
   // Módulo 30 (ADR 0048): tfd exige sanitary_transport e clinical_record (frase do 19b, acima).
   sanitary_transport_disabled: "transporte sanitário (sanitary_transport) desligado",
+  // Módulo 32b (ADR 0050): urgency_stock_deduction exige urgency_care e pharmacy, ligados e utilizáveis; o api não propaga o pré-requisito do pré-requisito (prontuário desligado = urgency_care_disabled).
+  urgency_care_disabled: "urgência e emergência (urgency_care) desligada",
+  pharmacy_disabled: "farmácia e almoxarifado (pharmacy) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -133,9 +136,11 @@ const FEATURE_LABELS: Record<string, string> = {
   tfd: "Tratamento Fora de Domicílio (TFD)",
   // Módulo 31 (ADR 0049): exige clinical_record (missing: clinical_record_disabled, já traduzido acima). Todos os ambientes, sem simulado.
   psychosocial_care: "Atenção psicossocial (CAPS)",
-  // Módulo 32a (ADR 0050): urgency_care exige clinical_record (missing: clinical_record_disabled, já traduzido acima); waiting_room_display é independente (UPA e UBS). Todos os ambientes, sem simulado. urgency_stock_deduction é do 32b.
+  // Módulo 32a (ADR 0050): urgency_care exige clinical_record (missing: clinical_record_disabled, já traduzido acima); waiting_room_display é independente (UPA e UBS). Todos os ambientes, sem simulado.
   urgency_care: "Urgência e emergência (UPA)",
-  waiting_room_display: "Painel de chamada na TV da sala de espera"
+  waiting_room_display: "Painel de chamada na TV da sala de espera",
+  // Módulo 32b (ADR 0050): exige urgency_care e pharmacy (frases acima). Todos os ambientes, sem simulado.
+  urgency_stock_deduction: "Baixa de estoque na medicação da UPA"
 };
 
 export function featureLabel(key: string): string | null {
