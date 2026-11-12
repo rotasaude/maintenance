@@ -369,6 +369,23 @@ administrações, os movimentos já gravados e as faltas ficam, e as faltas anti
 seguem visíveis para a farmácia. Ordem de deploy: api → dashboard → maintenance;
 contra um api sem o 32b, a chave só não aparece.
 
+**Ouvidoria do SUS (módulo 33).** O interruptor `ombudsman` ("Ouvidoria do SUS")
+liga no dashboard a caixa da ouvidoria, o registro pela equipe, o
+encaminhamento a setores e unidades, os prazos, o painel e o relatório anual, e
+no wpda a manifestação identificada ou com identidade preservada e "Minhas
+manifestações". Não tem pré-requisito: vale em qualquer modo de prontuário. O
+interruptor `ombudsman_anonymous_web` ("Denúncia anônima sem login (canal do
+cidadão)") liga o formulário público sem login do wpda; exige `ombudsman`.
+Desligar a ouvidoria deixa a denúncia como "ligada, falta pré-requisito", e a
+aba não desliga uma pela outra. Desligar só a denúncia anônima tira o formulário
+público sem mexer no resto da ouvidoria. Setores, respondentes, assuntos, prazos
+e o teto diário da denúncia anônima são configurados no dashboard; as duas
+chaves existem em todos os ambientes, sem simulado, e as duas chegam ao
+cidadão. Desligar esconde as telas, mas manifestações, encaminhamentos, anexos e
+a trilha de acesso à identidade ficam (a manifestação é retida por obrigação
+legal, ADR 0026). Ordem de deploy: api → dashboard → wpda → maintenance; contra
+um api sem o 33, as chaves só não aparecem.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e

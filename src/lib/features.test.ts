@@ -350,3 +350,21 @@ describe("módulo 32b", () => {
     expect(featureLabel("urgency_care")).toBe("Urgência e emergência (UPA)");
   });
 });
+
+describe("módulo 33", () => {
+  it("módulo 33: nomes e frase; missing desconhecido cru", () => {
+    expect(featureLabel("ombudsman")).toBe("Ouvidoria do SUS");
+    expect(featureLabel("ombudsman_anonymous_web")).toBe("Denúncia anônima sem login (canal do cidadão)");
+    expect(missingText("ombudsman_disabled")).toBe("ouvidoria do SUS (ombudsman) desligada");
+    expect(missingText("ombudsman_settings_missing")).toBe("ombudsman_settings_missing");
+  });
+
+  it("ombudsman_anonymous_web: a ouvidoria como único pré-requisito", () => {
+    expect(missingSummary([ "ombudsman_disabled" ])).toBe("ouvidoria do SUS (ombudsman) desligada");
+  });
+
+  it("os nomes do 32b não mudam", () => {
+    expect(featureLabel("urgency_stock_deduction")).toBe("Baixa de estoque na medicação da UPA");
+    expect(missingText("pharmacy_disabled")).toBe("farmácia e almoxarifado (pharmacy) desligada");
+  });
+});

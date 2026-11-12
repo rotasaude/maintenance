@@ -2417,3 +2417,121 @@ describe("FeaturesTab — baixa de estoque na medicação da UPA (módulo 32b)",
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — ouvidoria do SUS (módulo 33)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const OMB_OFF: Feature = {
+    key: "ombudsman",
+    description: "Ouvidoria do SUS municipal",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const OMB_ON: Feature = { ...OMB_OFF, enabled: true, usable: true, changedAt: "2026-11-11T13:00:00Z", changedBy: "dev@local" };
+  const ANON_OFF: Feature = {
+    key: "ombudsman_anonymous_web",
+    description: "Denúncia anônima sem login no canal do cidadão",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const ANON_ON: Feature = { ...ANON_OFF, enabled: true, usable: true, changedAt: "2026-11-11T13:05:00Z", changedBy: "dev@local" };
+
+  it("aparecem com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ OMB_OFF, ANON_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("ombudsman")).not.toBeNull();
+    expect(screen.getByText("Ouvidoria do SUS")).not.toBeNull();
+    expect(screen.getByText(OMB_OFF.description)).not.toBeNull();
+    expect(screen.getByText("ombudsman_anonymous_web")).not.toBeNull();
+    expect(screen.getByText("Denúncia anônima sem login (canal do cidadão)")).not.toBeNull();
+    expect(screen.getByText(ANON_OFF.description)).not.toBeNull();
+    expect(screen.getAllByText("desligada")).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("ombudsman em cidade integrated: liga utilizável, sem pré-requisito", async () => {
+    const user = userEvent.setup();
+    let listed = [ OMB_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ OMB_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: OMB_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar ombudsman" }));
+    expect((await screen.findByRole("status")).textContent).toBe("ombudsman ligada e utilizável.");
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "ombudsman", enabled: true });
+    expect(screen.queryByText("ligada, falta pré-requisito")).toBeNull();
+  });
+
+  it("denúncia anônima sem a ouvidoria: ligada, falta a ouvidoria", async () => {
+    const user = userEvent.setup();
+    const ANON_BLOCKED: Feature = { ...ANON_ON, usable: false, missing: [ "ombudsman_disabled" ] };
+    let listed = [ OMB_OFF, ANON_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ OMB_OFF, ANON_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: ANON_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "ligar" }))[1]);
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar ombudsman_anonymous_web" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "ombudsman_anonymous_web", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "ombudsman_anonymous_web ligada, mas ainda não utilizável — falta: ouvidoria do SUS (ombudsman) desligada."
+    );
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("desligar ombudsman com a denúncia anônima ligada: só a chave pedida; a denúncia fica faltando a ouvidoria", async () => {
+    const user = userEvent.setup();
+    const OMB_OFF_NOW: Feature = { ...OMB_OFF, changedAt: "2026-11-11T15:00:00Z", changedBy: "dev@local" };
+    const ANON_ORPHAN: Feature = { ...ANON_ON, usable: false, missing: [ "ombudsman_disabled" ] };
+    let listed = [ OMB_ON, ANON_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ OMB_OFF_NOW, ANON_ORPHAN ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: OMB_OFF_NOW } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar ombudsman" }));
+    await waitFor(() => expect(screen.getByText("ouvidoria do SUS (ombudsman) desligada")).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "ombudsman", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("ombudsman desligada.");
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("ouvidoria e denúncia ligadas: nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ OMB_ON, ANON_ON ], { recordMode: "off" })));
+    renderTab();
+
+    expect(await screen.findByText("ombudsman_anonymous_web")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(2);
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

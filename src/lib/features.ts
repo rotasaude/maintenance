@@ -72,6 +72,8 @@ const MISSING_LABELS: Record<string, string> = {
   // Módulo 32b (ADR 0050): urgency_stock_deduction exige urgency_care e pharmacy, ligados e utilizáveis; o api não propaga o pré-requisito do pré-requisito (prontuário desligado = urgency_care_disabled).
   urgency_care_disabled: "urgência e emergência (urgency_care) desligada",
   pharmacy_disabled: "farmácia e almoxarifado (pharmacy) desligada",
+  // Módulo 33 (ADR 0051): ombudsman_anonymous_web exige ombudsman ligado e utilizável.
+  ombudsman_disabled: "ouvidoria do SUS (ombudsman) desligada",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -140,7 +142,10 @@ const FEATURE_LABELS: Record<string, string> = {
   urgency_care: "Urgência e emergência (UPA)",
   waiting_room_display: "Painel de chamada na TV da sala de espera",
   // Módulo 32b (ADR 0050): exige urgency_care e pharmacy (frases acima). Todos os ambientes, sem simulado.
-  urgency_stock_deduction: "Baixa de estoque na medicação da UPA"
+  urgency_stock_deduction: "Baixa de estoque na medicação da UPA",
+  // Módulo 33 (ADR 0051): ombudsman sem pré-requisito (nem o modo prontuário); ombudsman_anonymous_web exige ombudsman (missing: ombudsman_disabled, acima). Todos os ambientes, sem simulado.
+  ombudsman: "Ouvidoria do SUS",
+  ombudsman_anonymous_web: "Denúncia anônima sem login (canal do cidadão)"
 };
 
 export function featureLabel(key: string): string | null {
