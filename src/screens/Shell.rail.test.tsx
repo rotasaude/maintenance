@@ -35,13 +35,16 @@ describe("Shell: topo e trilho", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("trilho 'Telas' com os 8 botões de nome exato, ícone escondido, Cidades ativo", async () => {
+  it("trilho 'Telas' com os 9 botões de nome exato, na ordem, ícone escondido, Cidades ativo", async () => {
     renderShell();
     const rail = await screen.findByRole("navigation", { name: "Telas" });
-    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Vigilância", "Mantenedores", "Tokens", "Auditoria" ]) {
+    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Vigilância", "Mapas de campo", "Mantenedores", "Tokens", "Auditoria" ]) {
       const b = within(rail).getByRole("button", { name: label });
       expect(b.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
     }
+    expect(within(rail).getAllByRole("button").map((b) => b.textContent)).toEqual(
+      [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Vigilância", "Mapas de campo", "Mantenedores", "Tokens", "Auditoria" ]
+    );
     expect(within(rail).getByRole("button", { name: "Cidades" }).getAttribute("aria-current")).toBe("page");
   });
 

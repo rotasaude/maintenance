@@ -8,14 +8,18 @@ type Props = {
   onClick?: () => void;
   // secondary: ação de apoio; danger: destrutiva (aposentar, reverter) — PR-12.
   variant?: "primary" | "secondary" | "danger";
+  // Nome para leitor de tela quando o texto visível se repete na lista (ex.:
+  // "Gerar de novo" em cada linha): deve COMEÇAR pelo texto visível.
+  label?: string;
 };
 
-export function Button({ children, type = "button", disabled, busy, onClick, variant = "primary" }: Props) {
+export function Button({ children, type = "button", disabled, busy, onClick, variant = "primary", label }: Props) {
   return (
     <button
       type={type}
       disabled={disabled || busy}
       onClick={onClick}
+      aria-label={label}
       data-busy={busy || undefined}
       style={{
         padding: "9px 16px",

@@ -34,7 +34,7 @@ describe("Shell", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("mostra o e-mail do mantenedor, a navegação com as oito telas e 'sair' encerra a sessão", async () => {
+  it("mostra o e-mail do mantenedor, a navegação com as nove telas e 'sair' encerra a sessão", async () => {
     const user = userEvent.setup();
     fetchMock.mockImplementation((url: string) => {
       const path = String(url);
@@ -46,7 +46,7 @@ describe("Shell", () => {
     renderShell();
 
     expect(await screen.findByText("mantenedor@rotasaude.app")).not.toBeNull();
-    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Vigilância", "Mantenedores", "Tokens", "Auditoria" ]) {
+    for (const label of [ "Cidades", "Medicamentos", "Laboratório", "Linhas de cuidado", "Vigilância", "Mapas de campo", "Mantenedores", "Tokens", "Auditoria" ]) {
       expect(screen.getByRole("button", { name: label })).not.toBeNull();
     }
     expect(screen.getByRole("button", { name: "Cidades" }).getAttribute("aria-current")).toBe("page");
@@ -172,5 +172,27 @@ describe("Shell", () => {
     await user.click(await screen.findByRole("button", { name: "Vigilância" }));
     expect(screen.getByRole("button", { name: "Vigilância" }).getAttribute("aria-current")).toBe("page");
     expect(await screen.findByText("nenhuma versão da lista")).not.toBeNull();
+  });
+
+  it("Mapas de campo abre a tela dos mapas por cidade", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const path = String(url);
+      if (path === "/session") return Promise.resolve(reply(200, { id: "m1", email_address: "mantenedor@rotasaude.app", expires_at: "2026-01-01T01:00:00Z" }));
+      if (path === "/graphql") {
+        const body = JSON.parse((init as RequestInit).body as string);
+        if (String(body.query).includes("query FieldMaps")) {
+          return Promise.resolve(reply(200, { data: { cities: [], fieldMaps: [], fieldMapBase: null } }));
+        }
+        return Promise.resolve(reply(200, { data: { cities: [] } }));
+      }
+      return Promise.resolve(reply(204, undefined));
+    });
+    renderShell();
+
+    await user.click(await screen.findByRole("button", { name: "Mapas de campo" }));
+    expect(screen.getByRole("button", { name: "Mapas de campo" }).getAttribute("aria-current")).toBe("page");
+    expect(await screen.findByText("a base do Brasil ainda não foi copiada")).not.toBeNull();
+    expect(screen.getByText("nenhuma cidade")).not.toBeNull();
   });
 });
