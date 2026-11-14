@@ -244,6 +244,30 @@ simulado. Desligar esconde as telas e para fichas novas; o que já foi gravado
 fica. Nenhum dado de cidadão passa por aqui. Ordem de deploy: api → dashboard →
 maintenance; contra um api sem o 24a, a chave só não aparece.
 
+**Visita domiciliar e atividade coletiva (módulo 24b).** O interruptor
+`home_visits` ("Visita domiciliar e territorial") liga, no dashboard, a folha do
+dia do ACS e dos outros agentes de campo (com a ficha LEDI de visita), as
+visitas da equipe, a atribuição de microáreas pelo enfermeiro, "quem visitar",
+os aparelhos do app de campo e a sincronização `/field/v1`; e, no wpda, a visita
+realizada na linha do tempo e em "Meu acompanhamento". Exige `territory_registry`
+ligado e utilizável: sem ele, ou com ele ligado sem o prontuário, o IBGE ou a
+UF, a linha diz "cadastro individual e domiciliar (territory_registry) desligado
+ou incompleto". O interruptor `collective_activities` ("Atividade coletiva")
+liga a atividade coletiva com a ficha LEDI, sem PSE; exige `clinical_record`
+(só cidades em modo `record`) e não depende do cadastro territorial. A aba não
+liga nem desliga uma pela outra, nem desliga a visita quando o cadastro é
+desligado. As duas existem em todos os ambientes, sem simulado.
+`home_visits` vai na sessão do cidadão (o wpda não depende dele);
+`collective_activities` nunca chega ao cidadão. Desligar esconde as telas e
+bloqueia visita, atividade e sincronização novas; "Aparelhos de campo" continua
+visível para revogar aparelho perdido (só o cadastro de aparelho novo depende do
+interruptor). O que foi gravado fica (a visita realizada segue no histórico do
+cidadão), e as folhas de dias anteriores ainda abertas são fechadas pelo job da
+madrugada com a ficha gerada (o que foi visitado chega ao SIAPS). Microáreas,
+atribuições e aparelhos são da cidade, no dashboard; nenhum dado de cidadão nem
+token de aparelho passa por aqui. Ordem de deploy: api → dashboard → wpda →
+maintenance; contra um api sem o 24b, as chaves só não aparecem.
+
 **Vigilância epidemiológica (módulo 25).** O interruptor `surveillance`
 ("Vigilância epidemiológica") liga, no dashboard, a fila da vigilância
 municipal, a notificação manual, a notificação negativa semanal, os relatórios

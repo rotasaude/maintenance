@@ -2535,3 +2535,175 @@ describe("FeaturesTab — ouvidoria do SUS (módulo 33)", () => {
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — visita domiciliar e atividade coletiva (módulo 24b)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const TERRITORY_PHRASE = "cadastro individual e domiciliar (territory_registry) desligado ou incompleto";
+  const TR_ON: Feature = {
+    key: "territory_registry",
+    description: "Cadastro territorial: microáreas, domicílios, famílias e cadastro individual com fichas LEDI de cadastro",
+    enabled: true, usable: true, missing: [], changedAt: "2026-11-12T12:00:00Z", changedBy: "dev@local"
+  };
+  const HV_OFF: Feature = {
+    key: "home_visits",
+    description: "Folha do dia, ficha LEDI de visita, quem visitar e sincronização do app de campo", // Q24
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const HV_ON: Feature = { ...HV_OFF, enabled: true, usable: true, changedAt: "2026-11-12T13:00:00Z", changedBy: "dev@local" };
+  const CA_OFF: Feature = {
+    key: "collective_activities",
+    description: "Atividade coletiva com ficha LEDI, sem PSE",
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null
+  };
+  const CA_ON: Feature = { ...CA_OFF, enabled: true, usable: true, changedAt: "2026-11-12T13:05:00Z", changedBy: "dev@local" };
+
+  it("aparecem com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ HV_OFF, CA_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("home_visits")).not.toBeNull();
+    expect(screen.getByText("Visita domiciliar e territorial")).not.toBeNull();
+    expect(screen.getByText(HV_OFF.description)).not.toBeNull();
+    expect(screen.getByText("collective_activities")).not.toBeNull();
+    expect(screen.getByText("Atividade coletiva")).not.toBeNull();
+    expect(screen.getByText(CA_OFF.description)).not.toBeNull();
+    expect(screen.getAllByText("desligada")).toHaveLength(2);
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("home_visits com o cadastro territorial utilizável: liga utilizável", async () => {
+    const user = userEvent.setup();
+    let listed = [ TR_ON, HV_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ TR_ON, HV_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: HV_ON } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar home_visits" }));
+    expect((await screen.findByRole("status")).textContent).toBe("home_visits ligada e utilizável.");
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "home_visits", enabled: true });
+    expect(screen.queryByText("ligada, falta pré-requisito")).toBeNull();
+  });
+
+  it("home_visits sem o cadastro territorial: ligada, falta o cadastro", async () => {
+    const user = userEvent.setup();
+    const HV_BLOCKED: Feature = { ...HV_ON, usable: false, missing: [ "territory_registry_disabled" ] };
+    let listed = [ HV_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ HV_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: HV_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar home_visits" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "home_visits", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      `home_visits ligada, mas ainda não utilizável — falta: ${TERRITORY_PHRASE}.`
+    );
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("desligar territory_registry com home_visits ligada: só a chave pedida; a visita fica faltando o cadastro", async () => {
+    const user = userEvent.setup();
+    const TR_OFF_NOW: Feature = { ...TR_ON, enabled: false, usable: false, changedAt: "2026-11-12T15:00:00Z" };
+    const HV_ORPHAN: Feature = { ...HV_ON, usable: false, missing: [ "territory_registry_disabled" ] };
+    let listed = [ TR_ON, HV_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ TR_OFF_NOW, HV_ORPHAN ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: TR_OFF_NOW } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar territory_registry" }));
+    await waitFor(() => expect(screen.getByText(TERRITORY_PHRASE)).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "territory_registry", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("territory_registry desligada.");
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("collective_activities em cidade integrated: falta o prontuário, não o cadastro territorial", async () => {
+    const user = userEvent.setup();
+    const CA_BLOCKED: Feature = { ...CA_ON, usable: false, missing: [ "clinical_record_disabled" ] };
+    let listed = [ CA_OFF ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ CA_BLOCKED ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: CA_BLOCKED } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "integrated" }));
+    });
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar collective_activities" }));
+    expect((await screen.findByRole("status")).textContent).toBe(
+      "collective_activities ligada, mas ainda não utilizável — falta: prontuário da atenção primária (clinical_record) desligado."
+    );
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "collective_activities", enabled: true });
+    expect(screen.queryByText(TERRITORY_PHRASE)).toBeNull();
+  });
+
+  it("desligar home_visits não mexe em collective_activities", async () => {
+    const user = userEvent.setup();
+    const HV_OFF_NOW: Feature = { ...HV_OFF, changedAt: "2026-11-12T16:00:00Z", changedBy: "dev@local" };
+    let listed = [ HV_ON, CA_ON ];
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = [ HV_OFF_NOW, CA_ON ];
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: HV_OFF_NOW } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar home_visits" }));
+    expect((await screen.findByRole("status")).textContent).toBe("home_visits desligada.");
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "home_visits", enabled: false });
+    await waitFor(() => expect(screen.getAllByText("ligada e utilizável")).toHaveLength(1));
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("visita e atividade ligadas: nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ HV_ON, CA_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("collective_activities")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(2);
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

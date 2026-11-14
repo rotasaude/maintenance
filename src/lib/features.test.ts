@@ -368,3 +368,23 @@ describe("módulo 33", () => {
     expect(missingText("pharmacy_disabled")).toBe("farmácia e almoxarifado (pharmacy) desligada");
   });
 });
+
+describe("módulo 24b", () => {
+  it("módulo 24b: nomes, frase do cadastro; missing desconhecido cru", () => {
+    expect(featureLabel("home_visits")).toBe("Visita domiciliar e territorial");
+    expect(featureLabel("collective_activities")).toBe("Atividade coletiva");
+    expect(missingText("territory_registry_disabled")).toBe("cadastro individual e domiciliar (territory_registry) desligado ou incompleto");
+    expect(missingText("field_devices_missing")).toBe("field_devices_missing");
+  });
+
+  it("home_visits falta o cadastro; collective_activities reaproveita a frase do prontuário", () => {
+    expect(missingSummary([ "territory_registry_disabled" ])).toBe("cadastro individual e domiciliar (territory_registry) desligado ou incompleto");
+    expect(missingSummary([ "clinical_record_disabled" ])).toBe("prontuário da atenção primária (clinical_record) desligado");
+  });
+
+  it("os nomes do 24a e do 33 não mudam", () => {
+    expect(featureLabel("territory_registry")).toBe("Cadastro individual e domiciliar");
+    expect(featureLabel("ombudsman_anonymous_web")).toBe("Denúncia anônima sem login (canal do cidadão)");
+    expect(missingText("ombudsman_disabled")).toBe("ouvidoria do SUS (ombudsman) desligada");
+  });
+});
