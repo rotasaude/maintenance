@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { C2_V1, C3_FULL_ELIGIBILITY, C3_FULL_PRACTICES, C3_FULL_V1, C3_V1, C4_V1, C4_V2, C7_V1, renderScreen, reply } from "./CareLineTemplates.fixtures";
+import { C2_V1, C3_FULL_ELIGIBILITY, C3_FULL_PRACTICES, C3_FULL_V1, C3_V1, C4_A, C4_V1, C4_V2, C7_V1, renderScreen, reply } from "./CareLineTemplates.fixtures";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -194,6 +194,40 @@ describe("CareLineTemplateForm", () => {
     await publish(user);
     await waitFor(() => expect(upserts()).toHaveLength(1));
     expect((bodyOf(upserts()[0]).variables.practices as SentPractice[])[1].source).toBe("acs_visit");
+  });
+
+  it("intervalo mínimo (módulo 24b): 0 é recusado antes de enviar; 30 vai como min_gap_days só na prática editada", async () => {
+    const user = userEvent.setup();
+    await openNewVersion(user);
+    const gap = within(practice(1)).getByLabelText("Intervalo mínimo entre registros (dias)") as HTMLInputElement;
+    expect(gap.value).toBe("");
+    await user.type(gap, "0");
+    await publish(user);
+    expect(await within(form()).findByText(/intervalo mínimo de 1 a 365 dias/)).not.toBeNull();
+    expect(upserts()).toHaveLength(0);
+    await user.clear(gap);
+    await user.type(gap, "30");
+    await publish(user);
+    await waitFor(() => expect(upserts()).toHaveLength(1));
+    const sent = bodyOf(upserts()[0]).variables.practices as (SentPractice & { min_gap_days?: number })[];
+    expect(sent[0].min_gap_days).toBe(30);
+    expect("min_gap_days" in sent[1]).toBe(false);
+  });
+
+  it("versão com intervalo abre o campo preenchido, não o lista como avançado e publica igual", async () => {
+    const user = userEvent.setup();
+    const WITH_GAP = { ...C4_V2, practices: [ { ...C4_A, min_gap_days: 30 }, C4_V2.practices[1] ] };
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as Body;
+      if (body.query.includes("mutation UpsertCareLineTemplate")) return Promise.resolve(upsertReply());
+      return Promise.resolve(reply(200, { data: { careLineTemplates: [ WITH_GAP, C4_V1 ] } }));
+    });
+    await openNewVersion(user);
+    expect((within(practice(1)).getByLabelText("Intervalo mínimo entre registros (dias)") as HTMLInputElement).value).toBe("30");
+    expect(within(practice(1)).queryByText(/min_gap_days/)).toBeNull();
+    await publish(user);
+    await waitFor(() => expect(upserts()).toHaveLength(1));
+    expect((bodyOf(upserts()[0]).variables.practices as { min_gap_days?: number }[])[0].min_gap_days).toBe(30);
   });
 
   it("C3 completo (início de janela, filtro por código, all_of e applies_to) faz a ida e volta pelo formulário sem perder nada", async () => {

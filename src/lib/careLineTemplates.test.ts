@@ -5,7 +5,7 @@ import {
   versionsOf, type EligibilityJson, type PracticeJson, type TemplateDraft, type TemplateView
 } from "./careLineTemplates";
 
-// Formas REAIS do catalog-base.yml do api (sem chave nula, sem lista vazia) — copiado de catalog-base.yml @454e502.
+// Formas REAIS do catalog-base.yml do api (sem chave nula, sem lista vazia) — copiado de catalog-base.yml do api (main, 7a7343bc).
 const MD_NURSE = [ "2231", "2251", "2252", "2253", "2235" ];
 const P = (key: string, label: string, source: string, anchor: string, window_days: number, min_count: number, schedule: string,
   points: number, extra: Partial<PracticeJson> = {}): PracticeJson => ({ key, label, source, anchor, window_days, min_count, schedule, points, ...extra });
@@ -15,7 +15,7 @@ const C2: PracticeJson[] = [
   P("c2_a", "1ª consulta até o 30º dia de vida", "consultation", "birth", 30, 1, "end_of_window", 20, { citizen_label: "Primeira consulta do bebê", cbo_filter: MD_NURSE }),
   P("c2_b", "9 consultas até os 2 anos", "consultation", "birth", 730, 9, "proportional", 20, { citizen_label: "Consultas de acompanhamento da criança", cbo_filter: MD_NURSE }),
   P("c2_c", "9 registros de peso e altura até os 2 anos", "weight_height", "birth", 730, 9, "proportional", 20, { citizen_label: "Medir peso e altura da criança" }),
-  P("c2_d", "2 visitas do ACS", "acs_visit", "birth", 180, 2, "end_of_window", 20),
+  P("c2_d", "2 visitas do ACS", "acs_visit", "birth", 180, 2, "end_of_window", 20, { citizen_label: "Visitas do agente de saúde" }),
   P("c2_e", "Vacinas com todas as doses", "vaccine:c2_schedule", "birth", 730, 1, "end_of_window", 20)
 ];
 
@@ -31,7 +31,7 @@ const C3: PracticeJson[] = [
   P("c3_b", "7 consultas de pré-natal", "consultation", "lmp", 294, 7, "proportional", 9, { cbo_filter: MD_NURSE }),
   P("c3_c", "7 aferições de pressão", "blood_pressure", "lmp", 294, 7, "proportional", 9),
   P("c3_d", "7 registros de peso e altura", "weight_height", "lmp", 294, 7, "proportional", 9),
-  P("c3_e", "3 visitas do ACS", "acs_visit", "lmp", 294, 3, "end_of_window", 9),
+  P("c3_e", "3 visitas do ACS", "acs_visit", "lmp", 294, 3, "end_of_window", 9, { citizen_label: "Visitas do agente de saúde" }),
   P("c3_f", "Vacina dTpa", "vaccine:57", "lmp", 294, 1, "end_of_window", 9, { window_start_days: 140 }),
   P("c3_g", "Testes do 1º trimestre", "procedure:0214010074", "lmp", 97, 1, "end_of_window", 9, { all_of: [ SYPHILIS, HIV ] }),
   P("c3_h", "Testes do 3º trimestre", "procedure:0214010074", "lmp", 294, 1, "end_of_window", 9, { window_start_days: 196, all_of: [ SYPHILIS, HIV ] }),
@@ -39,7 +39,7 @@ const C3: PracticeJson[] = [
     window_start_days: 154, cbo_filter: MD_NURSE, code_filter: { ciap2: [ "P29", "W18" ], cid10: [ "F53", "O85" ] },
     all_of: [ [ { source: "consultation" }, { source: "procedure:0301010129" } ] ]
   }),
-  P("c3_j", "Visita do ACS no puerpério", "acs_visit", "lmp", 336, 1, "end_of_window", 9, { window_start_days: 294 }),
+  P("c3_j", "Visita do ACS no puerpério", "acs_visit", "lmp", 336, 1, "end_of_window", 9, { window_start_days: 294, citizen_label: "Visitas do agente de saúde" }),
   P("c3_k", "Saúde bucal na gestação", "oral_health", "lmp", 294, 1, "end_of_window", 9)
 ];
 
@@ -51,7 +51,7 @@ const C4: PracticeJson[] = [
   C4_A,
   P("c4_b", "Pressão arterial em 6 meses", "blood_pressure", "rolling", 183, 1, "end_of_window", 15),
   P("c4_c", "Peso e altura em 12 meses", "weight_height", "rolling", 365, 1, "end_of_window", 15),
-  P("c4_d", "2 visitas do ACS em 12 meses", "acs_visit", "rolling", 365, 2, "end_of_window", 20),
+  P("c4_d", "2 visitas do ACS em 12 meses", "acs_visit", "rolling", 365, 2, "end_of_window", 20, { citizen_label: "Visitas do agente de saúde" }),
   C4_E,
   P("c4_f", "Avaliação dos pés em 12 meses", "procedure:0301040095", "rolling", 365, 1, "end_of_window", 15)
 ];
@@ -62,14 +62,14 @@ const C5: PracticeJson[] = [
     { citizen_label: "Consulta de acompanhamento", cbo_filter: MD_NURSE }),
   P("c5_b", "Pressão arterial aferida nos últimos 6 meses", "blood_pressure", "rolling", 183, 1, "end_of_window", 25, { citizen_label: "Medir a pressão" }),
   P("c5_c", "Peso e altura nos últimos 12 meses", "weight_height", "rolling", 365, 1, "end_of_window", 25, { citizen_label: "Medir peso e altura" }),
-  P("c5_d", "2 visitas do ACS nos últimos 12 meses", "acs_visit", "rolling", 365, 2, "end_of_window", 25)
+  P("c5_d", "2 visitas do ACS nos últimos 12 meses", "acs_visit", "rolling", 365, 2, "end_of_window", 25, { citizen_label: "Visitas do agente de saúde", min_gap_days: 30 })
 ];
 
 const C6_ELIG: EligibilityJson = { age_min_years: 60 };
 const C6: PracticeJson[] = [
   P("c6_a", "Consulta em 12 meses", "consultation", "rolling", 365, 1, "end_of_window", 25, { cbo_filter: MD_NURSE }),
   P("c6_b", "Peso e altura em 12 meses", "weight_height", "rolling", 365, 1, "end_of_window", 25),
-  P("c6_c", "2 visitas do ACS", "acs_visit", "rolling", 365, 2, "end_of_window", 25),
+  P("c6_c", "2 visitas do ACS", "acs_visit", "rolling", 365, 2, "end_of_window", 25, { citizen_label: "Visitas do agente de saúde" }),
   P("c6_d", "Vacina de influenza", "vaccine:33", "rolling", 365, 1, "end_of_window", 25)
 ];
 
@@ -118,7 +118,7 @@ describe("rótulos", () => {
     expect(sourceText("exam:0202010503")).toBe("exame SIGTAP 0202010503 (pedido ou resultado)");
     expect(sourceText("procedure:0301040095")).toBe("procedimento SIGTAP 0301040095");
     expect(sourceText("vaccine:57")).toBe("vacina 57 (não acompanhada pelo sistema)");
-    expect(sourceText("acs_visit")).toBe("visita do ACS (não acompanhada pelo sistema)");
+    expect(sourceText("acs_visit")).toBe("visita do ACS (acompanhada quando a visita domiciliar está ligada na cidade)");
     expect(sourceText("oral_health")).toBe("saúde bucal (não acompanhada pelo sistema)");
     expect(sourceText("teleconsulta")).toBe("teleconsulta");
     expect(sourceText("teleconsulta:9")).toBe("teleconsulta:9");
@@ -135,7 +135,7 @@ describe("rótulos", () => {
     expect(ruleText({ ...C4_A, points: 85 })).toBe("consulta finalizada · 1× em 183 dias, até o fim da janela · janela móvel · CBO 2231, 2251, 2252, 2253, 2235 · 85 pontos");
     expect(ruleText({ ...C4_E, window_start_days: 196, window_days: 294, anchor: "lmp", min_count: 7, schedule: "proportional", points: 9 }))
       .toBe("exame SIGTAP 0202010503 (pedido ou resultado) · 7× do dia 196 ao 294, proporcional ao tempo · desde a DUM · 9 pontos");
-    expect(ruleText(C2[3])).toBe("visita do ACS (não acompanhada pelo sistema) · 2× em 180 dias, até o fim da janela · desde o nascimento · 20 pontos");
+    expect(ruleText(C2[3])).toBe("visita do ACS (acompanhada quando a visita domiciliar está ligada na cidade) · 2× em 180 dias, até o fim da janela · desde o nascimento · 20 pontos");
     expect(advancedText(C3[6])).toBe("todas de: procedimento SIGTAP 0214010074 ou exame SIGTAP 0202031098 (pedido ou resultado) | procedimento SIGTAP 0214010040 ou exame SIGTAP 0213010780 (pedido ou resultado)");
     expect(advancedText(C7[0])).toBe("todas de: exame SIGTAP 0203010086 (pedido ou resultado) ou procedimento SIGTAP 0201020033 ou exame SIGTAP 0202100251 (pedido ou resultado) em 1826 dias · vale de 25 a 64 anos");
     // alternativa de fonte desconhecida (api mais novo) continua crua
@@ -218,7 +218,7 @@ describe("rascunho e ida e volta", () => {
   it("ida e volta do que o api devolve (nulos e zeros) sai na forma enxuta, sem lista nem objeto vazio", () => {
     const apiShaped = t({
       practices: [
-        { ...C4_A, points: 85, window_start_days: 0, code_filter: null, applies_to: null, all_of: null },
+        { ...C4_A, points: 85, window_start_days: 0, code_filter: null, applies_to: null, all_of: null, min_gap_days: null },
         { ...C4_E, points: 15, citizen_label: null, cbo_filter: null, window_start_days: 0 }
       ],
       eligibility: { ...C4_ELIG, exclude_problems: { ciap2: [], cid10: [] }, gender_identities_included: [], declared: [ "diabetes" ] }
@@ -489,5 +489,55 @@ describe("frases das recusas do api, com o campo; desconhecido cru", () => {
     for (const inherited of [ "constructor", "toString", "__proto__", "hasOwnProperty" ])
       expect(upsertErrorText([ { path: "key", message: inherited } ])).toBe(inherited);
     expect(upsertErrorText([])).toBe("não foi possível concluir — tente de novo");
+  });
+});
+
+describe("módulo 24b: intervalo mínimo entre registros", () => {
+  const ok = (): TemplateDraft => toDraft(t({ version: 2, current: true }));
+  const practice = (patch: object) => {
+    const d = ok();
+    return draftProblem({ ...d, practices: [ { ...d.practices[0], ...patch, points: "100" } ] });
+  };
+
+  it("rascunho lê min_gap_days para o campo e a ida e volta devolve o número", () => {
+    const view = t({ version: 2, current: true, practices: [ { ...C4_A, points: 85, min_gap_days: 30 }, { ...C4_E, points: 15 } ] });
+    const d = toDraft(view);
+    expect(d.practices[0].minGapDays).toBe("30");
+    expect("min_gap_days" in d.practices[0].advanced).toBe(false);
+    expect(d.practices[1].minGapDays).toBe("");
+    const sent = draftToVariables(d).practices;
+    expect(sent[0].min_gap_days).toBe(30);
+    expect("min_gap_days" in sent[1]).toBe(false);
+  });
+
+  it("campo vazio não manda a chave", () => {
+    expect(draftToVariables(ok()).practices.every((p) => !("min_gap_days" in p))).toBe(true);
+  });
+
+  it("min_gap_days nulo vindo do api sai ausente, nunca null", () => {
+    const view = t({ practices: [ { ...C4_A, points: 85, min_gap_days: null }, { ...C4_E, points: 15, min_gap_days: null } ] });
+    const sent = draftToVariables(toDraft(view)).practices;
+    expect(sent.every((p) => !("min_gap_days" in p))).toBe(true);
+  });
+
+  it("intervalo mínimo fora de 1 a 365 ou não inteiro é recusado", () => {
+    expect(practice({ minGapDays: "0" })).toBe("boa prática 1: intervalo mínimo de 1 a 365 dias");
+    expect(practice({ minGapDays: "366" })).toBe("boa prática 1: intervalo mínimo de 1 a 365 dias");
+    expect(practice({ minGapDays: "30,5" })).toBe("boa prática 1: intervalo mínimo de 1 a 365 dias");
+    expect(practice({ minGapDays: "x" })).toBe("boa prática 1: intervalo mínimo de 1 a 365 dias");
+    expect(practice({ minGapDays: "" })).toBeNull();
+    expect(practice({ minGapDays: "30" })).toBeNull();
+    expect(practice({ minGapDays: "365" })).toBeNull();
+  });
+
+  it("a regra exibida diz o intervalo entre registros; sem a chave, nada muda", () => {
+    expect(ruleText({ ...C4_A, min_gap_days: 30 })).toContain("intervalo mínimo de 30 dias entre registros");
+    expect(ruleText(C4_A)).not.toContain("intervalo");
+    expect(ruleText({ ...C4_A, min_gap_days: null })).not.toContain("intervalo");
+  });
+
+  it("recusa do api no campo novo cita a boa prática e o campo", () => {
+    expect(upsertErrorText([ { path: "practices[0].min_gap_days", message: "invalid_practices" } ]))
+      .toBe("boas práticas inválidas — confira a boa prática 1 (intervalo mínimo)");
   });
 });

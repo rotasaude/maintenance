@@ -267,6 +267,13 @@ madrugada com a ficha gerada (o que foi visitado chega ao SIAPS). Microáreas,
 atribuições e aparelhos são da cidade, no dashboard; nenhum dado de cidadão nem
 token de aparelho passa por aqui. Ordem de deploy: api → dashboard → wpda →
 maintenance; contra um api sem o 24b, as chaves só não aparecem.
+Na tela **Linhas de cuidado**, a boa prática ganha **Intervalo mínimo entre
+registros (dias)** (`min_gap_days`, de 1 a 365): dois registros só contam com
+esse intervalo. A versão nova do catálogo-base (runbook do módulo, spec §7) põe
+30 dias na `c5_d` e o texto para o cidadão "Visitas do agente de saúde" nas seis
+práticas de visita do ACS; publicar não muda nenhuma cidade até ela adotar no
+dashboard. A fonte "visita do ACS" passa a ser acompanhada nas cidades com
+`home_visits` ligado.
 
 **Vigilância epidemiológica (módulo 25).** O interruptor `surveillance`
 ("Vigilância epidemiológica") liga, no dashboard, a fila da vigilância

@@ -112,6 +112,8 @@ export function CareLineTemplateForm({ draft: initial, fromVersion, busy, outcom
                   helpText="vazio = desde a âncora; só com âncora fixa" />
                 <Field label="Fim da janela (dias)" value={p.windowDays} onChange={(v) => setPractice(i, { windowDays: v })} />
                 <Field label="Quantidade mínima" value={p.minCount} onChange={(v) => setPractice(i, { minCount: v })} />
+                <Field label="Intervalo mínimo entre registros (dias)" value={p.minGapDays} onChange={(v) => setPractice(i, { minGapDays: v })}
+                  helpText="vazio = sem intervalo; de 1 a 365 (C5: 30 dias entre as visitas do ACS)" />
                 {select("Cronograma", p.schedule, SCHEDULES, scheduleText, (v) => setPractice(i, { schedule: v }))}
                 {select("Âncora", p.anchor, ANCHORS, anchorText, (v) => setPractice(i, { anchor: v }))}
                 {p.sourceKind === "consultation" && (

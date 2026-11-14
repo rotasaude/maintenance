@@ -15,7 +15,7 @@ export type EligibilityJson = {
 };
 export type PracticeJson = {
   key: string; label: string; citizen_label?: string | null; source: string; anchor: string; window_start_days?: number | null;
-  window_days: number; min_count: number; schedule: string; cbo_filter?: string[] | null; points?: number | null;
+  window_days: number; min_count: number; min_gap_days?: number | null; schedule: string; cbo_filter?: string[] | null; points?: number | null;
   code_filter?: { ciap2?: string[]; cid10?: string[] } | null;
   applies_to?: { age_min_years?: number; age_max_years?: number; sex?: string } | null;
   all_of?: { source: string; window_days?: number }[][] | null;
@@ -55,10 +55,11 @@ const GENDER_IDENTITY_LABELS: Record<string, string> = {
 };
 export function genderIdentityText(code: string): string { return Object.hasOwn(GENDER_IDENTITY_LABELS, code) ? GENDER_IDENTITY_LABELS[code] : code; }
 
+// Módulo 24b (contrato §12): acs_visit passa a ser rastreada com home_visits utilizável na cidade; sem ele, segue "não acompanhado" no dashboard.
 export const SOURCE_KINDS = [ "consultation", "blood_pressure", "weight_height", "exam", "procedure", "acs_visit", "vaccine", "oral_health" ] as const;
 const SOURCE_KIND_LABELS: Record<string, string> = {
   consultation: "consulta finalizada", blood_pressure: "pressão arterial (escuta ou consulta)", weight_height: "peso e altura (escuta ou consulta)",
-  exam: "exame (SIGTAP)", procedure: "procedimento (SIGTAP)", acs_visit: "visita do ACS (não acompanhada pelo sistema)",
+  exam: "exame (SIGTAP)", procedure: "procedimento (SIGTAP)", acs_visit: "visita do ACS (acompanhada quando a visita domiciliar está ligada na cidade)",
   vaccine: "vacina (não acompanhada pelo sistema)", oral_health: "saúde bucal (não acompanhada pelo sistema)"
 };
 export function sourceKindText(kind: string): string { return SOURCE_KIND_LABELS[kind] ?? kind; }
@@ -97,6 +98,7 @@ export function ruleText(p: PracticeJson): string {
   const span = p.window_start_days ? `do dia ${p.window_start_days} ao ${p.window_days}` : `em ${p.window_days} dias`;
   const parts = [ sourceText(p.source), `${p.min_count}× ${span}, ${scheduleText(p.schedule)}`, anchorText(p.anchor) ];
   if (p.cbo_filter && p.cbo_filter.length > 0) parts.push(`CBO ${p.cbo_filter.join(", ")}`);
+  if (typeof p.min_gap_days === "number") parts.push(`intervalo mínimo de ${p.min_gap_days} dias entre registros`);
   if (typeof p.points === "number") parts.push(`${p.points} pontos`);
   return parts.join(" · ");
 }
@@ -166,7 +168,7 @@ export function pointsTotal(practices: { points?: number | null }[]): number {
 type Advanced = Pick<PracticeJson, "code_filter" | "applies_to" | "all_of"> & Record<string, unknown>;
 export type PracticeDraft = {
   key: string; label: string; citizenLabel: string; sourceKind: string; code: string; windowStartDays: string; windowDays: string;
-  minCount: string; schedule: string; anchor: string; cboFilter: string; points: string; advanced: Advanced;
+  minCount: string; minGapDays: string; schedule: string; anchor: string; cboFilter: string; points: string; advanced: Advanced;
 };
 export type TemplateDraft = {
   key: string; name: string; indicator: string; declaredCondition: string; ciap: string; cid10: string; excludeCiap: string;
@@ -180,12 +182,12 @@ export type TemplateVariables = {
 };
 
 export const LIMITS = {
-  name: 120, label: 120, citizenLabel: 80, practices: 20, windowDays: 7300, minCount: 50, ageYears: 130, ageDays: 47450,
+  name: 120, label: 120, citizenLabel: 80, practices: 20, windowDays: 7300, minCount: 50, minGapDays: 365, ageYears: 130, ageDays: 47450,
   points: 100, cbo: 30, codes: 300
 } as const;
 
 export function emptyPractice(): PracticeDraft {
-  return { key: "", label: "", citizenLabel: "", sourceKind: "consultation", code: "", windowStartDays: "", windowDays: "183", minCount: "1",
+  return { key: "", label: "", citizenLabel: "", sourceKind: "consultation", code: "", windowStartDays: "", windowDays: "183", minCount: "1", minGapDays: "",
     schedule: "end_of_window", anchor: "rolling", cboFilter: "", points: "", advanced: {} };
 }
 
@@ -203,7 +205,7 @@ const charCount = (text: string) => [ ...text ].length;
 function practiceDraft(p: PracticeJson): PracticeDraft {
   const [ kind, code ] = splitSource(p.source);
   const {
-    key: _k, label: _l, citizen_label: _c, source: _s, anchor: _a, window_start_days: _w, window_days: _d, min_count: _m, schedule: _sc,
+    key: _k, label: _l, citizen_label: _c, source: _s, anchor: _a, window_start_days: _w, window_days: _d, min_count: _m, min_gap_days: _g, schedule: _sc,
     cbo_filter: _cbo, points: _p, code_filter: _cf, applies_to: _at, all_of: _ao, ...unknown
   } = p;
   const advanced: Advanced = { ...unknown };
@@ -212,7 +214,7 @@ function practiceDraft(p: PracticeJson): PracticeDraft {
   if (p.all_of) advanced.all_of = p.all_of;
   return {
     key: p.key, label: p.label, citizenLabel: p.citizen_label ?? "", sourceKind: kind, code: code ?? "",
-    windowStartDays: p.window_start_days ? String(p.window_start_days) : "", windowDays: String(p.window_days), minCount: String(p.min_count),
+    windowStartDays: p.window_start_days ? String(p.window_start_days) : "", windowDays: String(p.window_days), minCount: String(p.min_count), minGapDays: numText(p.min_gap_days),
     schedule: p.schedule, anchor: p.anchor, cboFilter: (p.cbo_filter ?? []).join(", "),
     points: typeof p.points === "number" ? String(p.points) : "", advanced
   };
@@ -296,6 +298,11 @@ function practiceProblem(p: PracticeDraft, n: string): string | null {
   if (start > 0 && p.anchor === "rolling") return `${n}: início da janela só com âncora fixa`;
   const c = intOf(p.minCount);
   if (c === null || c < 1 || c > LIMITS.minCount) return `${n}: quantidade mínima de 1 a ${LIMITS.minCount}`;
+  const gapRaw = p.minGapDays.trim();
+  if (gapRaw !== "") {
+    const g = intOf(gapRaw);
+    if (g === null || g < 1 || g > LIMITS.minGapDays) return `${n}: intervalo mínimo de 1 a ${LIMITS.minGapDays} dias`;
+  }
   if (p.schedule === "proportional" && p.anchor === "rolling") return `${n}: cronograma proporcional só com âncora fixa`;
 
   // Avançados preservados: a edição simples (âncora, fonte, quantidade) pode quebrar o que o api confere.
@@ -384,6 +391,7 @@ export function draftToVariables(d: TemplateDraft): TemplateVariables {
     key: d.key, name: d.name.trim(), indicator: indicatorOf(d.key) || d.indicator, declaredCondition: d.declaredCondition || null, eligibility,
     practices: d.practices.map((p) => {
       const start = numberOrUndefined(p.windowStartDays);
+      const gap = numberOrUndefined(p.minGapDays);
       const cbo = wordsOf(p.cboFilter);
       const code = p.code.trim();
       const coded = CODED.has(p.sourceKind) || (!(SOURCE_KINDS as readonly string[]).includes(p.sourceKind) && code !== "");
@@ -392,7 +400,9 @@ export function draftToVariables(d: TemplateDraft): TemplateVariables {
         ...(p.citizenLabel.trim() ? { citizen_label: p.citizenLabel.trim() } : {}),
         source: coded ? `${p.sourceKind}:${code}` : p.sourceKind, anchor: p.anchor,
         ...(start !== undefined && start > 0 ? { window_start_days: start } : {}),
-        window_days: Number(p.windowDays.trim()), min_count: Number(p.minCount.trim()), schedule: p.schedule,
+        window_days: Number(p.windowDays.trim()), min_count: Number(p.minCount.trim()),
+        ...(gap !== undefined ? { min_gap_days: gap } : {}),
+        schedule: p.schedule,
         ...(cbo.length > 0 ? { cbo_filter: cbo } : {}),
         points: Number(p.points.trim()),
         ...p.advanced
@@ -421,7 +431,7 @@ const ELIGIBILITY_FIELDS: Record<string, string> = {
 };
 const PRACTICE_FIELDS: Record<string, string> = {
   key: "chave", label: "o que conta", citizen_label: "texto para o cidadão", source: "fonte", anchor: "âncora", window_start_days: "início da janela",
-  window_days: "fim da janela", min_count: "quantidade mínima", schedule: "cronograma", cbo_filter: "CBO", code_filter: "filtro por código",
+  window_days: "fim da janela", min_count: "quantidade mínima", min_gap_days: "intervalo mínimo", schedule: "cronograma", cbo_filter: "CBO", code_filter: "filtro por código",
   applies_to: "vale para", all_of: "alternativas", points: "pontos"
 };
 const known = (table: Record<string, string>, field: string) => (Object.hasOwn(table, field) ? table[field] : null);
