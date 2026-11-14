@@ -536,6 +536,11 @@ describe("módulo 24b: intervalo mínimo entre registros", () => {
     expect(ruleText({ ...C4_A, min_gap_days: null })).not.toContain("intervalo");
   });
 
+  it("diz dia no singular quando o intervalo é de 1", () => {
+    expect(ruleText({ ...C4_A, min_gap_days: 1 })).toContain("intervalo mínimo de 1 dia entre registros");
+    expect(ruleText({ ...C4_A, min_gap_days: 1 })).not.toContain("1 dias");
+  });
+
   it("recusa do api no campo novo cita a boa prática e o campo", () => {
     expect(upsertErrorText([ { path: "practices[0].min_gap_days", message: "invalid_practices" } ]))
       .toBe("boas práticas inválidas — confira a boa prática 1 (intervalo mínimo)");

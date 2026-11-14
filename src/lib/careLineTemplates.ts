@@ -98,7 +98,7 @@ export function ruleText(p: PracticeJson): string {
   const span = p.window_start_days ? `do dia ${p.window_start_days} ao ${p.window_days}` : `em ${p.window_days} dias`;
   const parts = [ sourceText(p.source), `${p.min_count}× ${span}, ${scheduleText(p.schedule)}`, anchorText(p.anchor) ];
   if (p.cbo_filter && p.cbo_filter.length > 0) parts.push(`CBO ${p.cbo_filter.join(", ")}`);
-  if (typeof p.min_gap_days === "number") parts.push(`intervalo mínimo de ${p.min_gap_days} dias entre registros`);
+  if (typeof p.min_gap_days === "number") parts.push(`intervalo mínimo de ${p.min_gap_days} ${p.min_gap_days === 1 ? "dia" : "dias"} entre registros`);
   if (typeof p.points === "number") parts.push(`${p.points} pontos`);
   return parts.join(" · ");
 }
