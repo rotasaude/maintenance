@@ -248,8 +248,7 @@ maintenance; contra um api sem o 24a, a chave só não aparece.
 `home_visits` ("Visita domiciliar e territorial") liga, no dashboard, a folha do
 dia do ACS e dos outros agentes de campo (com a ficha LEDI de visita), as
 visitas da equipe, a atribuição de microáreas pelo enfermeiro, "quem visitar",
-os aparelhos do app de campo e a sincronização `/field/v1`; e, no wpda, a visita
-realizada na linha do tempo e em "Meu acompanhamento". Exige `territory_registry`
+os aparelhos do app de campo e a sincronização `/field/v1`. Exige `territory_registry`
 ligado e utilizável: sem ele, ou com ele ligado sem o prontuário, o IBGE ou a
 UF, a linha diz "cadastro individual e domiciliar (territory_registry) desligado
 ou incompleto". O interruptor `collective_activities` ("Atividade coletiva")
@@ -263,7 +262,7 @@ bloqueia visita, atividade e sincronização novas; "Aparelhos de campo" continu
 visível para revogar aparelho perdido (só o cadastro de aparelho novo depende do
 interruptor). O que foi gravado fica (a visita realizada segue no histórico do
 cidadão), e as folhas de dias anteriores ainda abertas são fechadas pelo job da
-madrugada com a ficha gerada (o que foi visitado chega ao SIAPS). Microáreas,
+madrugada com a ficha gerada (o que foi visitado segue para o PEC). Microáreas,
 atribuições e aparelhos são da cidade, no dashboard; nenhum dado de cidadão nem
 token de aparelho passa por aqui. Ordem de deploy: api → dashboard → wpda →
 maintenance; contra um api sem o 24b, as chaves só não aparecem.
@@ -273,7 +272,7 @@ esse intervalo. A versão nova do catálogo-base (runbook do módulo, spec §7) 
 30 dias na `c5_d` e o texto para o cidadão "Visitas do agente de saúde" nas seis
 práticas de visita do ACS; publicar não muda nenhuma cidade até ela adotar no
 dashboard. A fonte "visita do ACS" passa a ser acompanhada nas cidades com
-`home_visits` ligado.
+`home_visits` ligado e utilizável.
 
 **Vigilância epidemiológica (módulo 25).** O interruptor `surveillance`
 ("Vigilância epidemiológica") liga, no dashboard, a fila da vigilância
