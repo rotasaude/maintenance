@@ -416,6 +416,25 @@ a trilha de acesso à identidade ficam (a manifestação é retida por obrigaç�
 legal, ADR 0026). Ordem de deploy: api → dashboard → wpda → maintenance; contra
 um api sem o 33, as chaves só não aparecem.
 
+**Mapas de campo (módulo 24c).** A tela **Mapas de campo**, no trilho, é da
+plataforma: o app de campo trabalha offline com um arquivo de mapa por
+município, recortado de uma base do Brasil (Protomaps, dados do OpenStreetMap).
+Ela mostra a base (data e idade) e, para cada cidade do catálogo, a situação do
+mapa ("sem mapa", "gerando…", "pronto", "falhou"), a versão (a data da base),
+o tamanho, quando foi gerado e o motivo da falha. **Gerar de novo** enfileira o
+`FieldMaps::BuildJob`: recorte da base pela caixa do município mais 2 km, com
+zoom até 15; o arquivo antigo só sai depois de o novo ficar pronto, então quem
+está em campo não fica sem mapa. **Atualizar base** enfileira o
+`FieldMaps::RefreshBaseJob`, que copia a build mais recente (download grande,
+no servidor; uma cópia por vez). Os dois rodam em segundo plano e a tela não se
+atualiza sozinha: use "atualizar". **Gere o mapa da cidade antes de cadastrar
+aparelhos** (runbook do 24c). Base com mais de 90 dias mostra o aviso: atualize
+antes de gerar. Sem base, "Gerar de novo" fica desabilitado. O arquivo não tem
+dado de pessoa, e a tela não abre banco de cidade nem baixa o mapa. Os dois
+pedidos ficam na Auditoria (`maintenance.field_map.build_requested` e
+`maintenance.field_map.base_refresh_requested`). Ordem de deploy: api →
+maintenance; contra um api sem o 24c, só esta tela mostra o aviso.
+
 **Documentos clínicos (módulo 19c).** O interruptor `clinical_documents`
 ("Documentos clínicos (atestado, declaração, receita, requisição)") aparece na
 mesma lista e liga como os outros; ele precisa do `clinical_record` ligado e
