@@ -6,7 +6,7 @@ const config: CodegenConfig = {
   generates: {
     "src/gql/": {
       preset: "client",
-      config: { enumsAsTypes: true, scalars: { ISO8601DateTime: "string", ISO8601Date: "string" } },
+      config: { enumsAsTypes: true, scalars: { ISO8601DateTime: "string", ISO8601Date: "string", BigInt: "string" } },
       presetConfig: { fragmentMasking: false }
     }
   }
