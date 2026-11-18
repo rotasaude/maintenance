@@ -76,6 +76,8 @@ const MISSING_LABELS: Record<string, string> = {
   ombudsman_disabled: "ouvidoria do SUS (ombudsman) desligada",
   // Módulo 24b (ADR 0052): home_visits exige territory_registry ligado e utilizável; sem IBGE, UF ou prontuário o cadastro fica ligado mas inutilizável, e o api manda só este código (não propaga o pré-requisito do pré-requisito).
   territory_registry_disabled: "cadastro individual e domiciliar (territory_registry) desligado ou incompleto",
+  // Módulo 35a (ADR 0054): vector_control exige home_visits ligada e utilizável; com o cadastro territorial desligado ou incompleto a visita fica ligada mas inutilizável, e o api manda só este código.
+  home_visits_disabled: "visita domiciliar e territorial (home_visits) desligada ou incompleta",
   // O api não conseguiu ler o banco da cidade: usable vem false sem que se
   // saiba o que de fato falta (contratos §3). O liga/desliga continua.
   city_unreachable: "banco da cidade inalcançável — não deu para conferir"
@@ -150,7 +152,9 @@ const FEATURE_LABELS: Record<string, string> = {
   ombudsman_anonymous_web: "Denúncia anônima sem login (canal do cidadão)",
   // Módulo 24b (ADR 0052): home_visits exige territory_registry (missing: territory_registry_disabled, acima); collective_activities exige clinical_record (frase do 19b) e não depende do cadastro. Todos os ambientes, sem simulado.
   home_visits: "Visita domiciliar e territorial",
-  collective_activities: "Atividade coletiva"
+  collective_activities: "Atividade coletiva",
+  // Módulo 35a (ADR 0054): vector_control exige home_visits (missing: home_visits_disabled, acima). Todos os ambientes, sem simulado; nunca chega ao cidadão.
+  vector_control: "Vigilância ambiental (endemias)"
 };
 
 export function featureLabel(key: string): string | null {

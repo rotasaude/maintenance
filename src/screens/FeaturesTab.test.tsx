@@ -2707,3 +2707,112 @@ describe("FeaturesTab — visita domiciliar e atividade coletiva (módulo 24b)",
     expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
   });
 });
+
+describe("FeaturesTab — vigilância ambiental de endemias (módulo 35a)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => { fetchMock = vi.fn(); vi.stubGlobal("fetch", fetchMock); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const HOME_VISITS_PHRASE = "visita domiciliar e territorial (home_visits) desligada ou incompleta";
+  const HV_ON: Feature = { key: "home_visits", description: "Folha do dia, ficha LEDI de visita, quem visitar e sincronização do app de campo",
+    enabled: true, usable: true, missing: [], changedAt: "2026-11-16T12:00:00Z", changedBy: "dev@local" };
+  const VC_OFF: Feature = { key: "vector_control",
+    description: "Boletim do agente na visita, quarteirões, ciclos, ovitrampas, LIRAa e bloqueio de transmissão", // Q12
+    enabled: false, usable: false, missing: [], changedAt: null, changedBy: null };
+  const VC_ON: Feature = { ...VC_OFF, enabled: true, usable: true, changedAt: "2026-11-16T13:00:00Z", changedBy: "dev@local" };
+  const VC_BLOCKED: Feature = { ...VC_ON, usable: false, missing: [ "home_visits_disabled" ] };
+
+  function mockWithMutation(initial: Feature[], after: Feature[], requested: Feature) {
+    let listed = initial;
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      const body = bodyOf([ url, init ]);
+      if (body.query.includes("mutation SetCityFeature")) {
+        listed = after;
+        return Promise.resolve(reply(200, { data: { setCityFeature: { ok: true, errors: [], feature: requested } } }));
+      }
+      return Promise.resolve(featuresReply(listed, { recordMode: "record" }));
+    });
+  }
+
+  it("aparece com o nome em português e a descrição do api", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ VC_OFF ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("vector_control")).not.toBeNull();
+    expect(screen.getByText("Vigilância ambiental (endemias)")).not.toBeNull();
+    expect(screen.getByText(VC_OFF.description)).not.toBeNull();
+    expect(screen.getAllByText("desligada")).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/undefined|null/);
+  });
+
+  it("com a visita utilizável: liga utilizável", async () => {
+    const user = userEvent.setup();
+    mockWithMutation([ HV_ON, VC_OFF ], [ HV_ON, VC_ON ], VC_ON);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar vector_control" }));
+    expect((await screen.findByRole("status")).textContent).toBe("vector_control ligada e utilizável.");
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "vector_control", enabled: true });
+    expect(screen.queryByText("ligada, falta pré-requisito")).toBeNull();
+  });
+
+  it("sem a visita: ligada, falta a visita", async () => {
+    const user = userEvent.setup();
+    mockWithMutation([ VC_OFF ], [ VC_BLOCKED ], VC_BLOCKED);
+    renderTab();
+
+    await user.click(await screen.findByRole("button", { name: "ligar" }));
+    await user.click(screen.getByRole("button", { name: "confirmar: ligar vector_control" }));
+    await waitFor(() => expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1));
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "vector_control", enabled: true });
+    expect((await screen.findByRole("status")).textContent).toBe(
+      `vector_control ligada, mas ainda não utilizável — falta: ${HOME_VISITS_PHRASE}.`
+    );
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/undefined|apaga|exclu/i);
+  });
+
+  it("desligar home_visits com vector_control ligada: só a chave pedida; a vigilância fica faltando a visita", async () => {
+    const user = userEvent.setup();
+    const HV_OFF_NOW: Feature = { ...HV_ON, enabled: false, usable: false, changedAt: "2026-11-16T15:00:00Z" };
+    mockWithMutation([ HV_ON, VC_ON ], [ HV_OFF_NOW, VC_BLOCKED ], HV_OFF_NOW);
+    renderTab();
+
+    await user.click((await screen.findAllByRole("button", { name: "desligar" }))[0]);
+    await user.click(screen.getByRole("button", { name: "confirmar: desligar home_visits" }));
+    await waitFor(() => expect(screen.getByText(HOME_VISITS_PHRASE)).not.toBeNull());
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(1);
+    expect(bodyOf(calls(fetchMock, "mutation SetCityFeature")[0]).variables)
+      .toEqual({ citySlug: "sp", key: "home_visits", enabled: false });
+    expect((await screen.findByRole("status")).textContent).toBe("home_visits desligada.");
+    expect(screen.getByText("ligada, falta pré-requisito")).not.toBeNull();
+    expect(screen.queryByText("ligada e utilizável")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/apaga|exclu/i);
+  });
+
+  it("visita ligada sem o cadastro: a vigilância mostra só a frase da visita", async () => {
+    const HV_NO_REGISTRY: Feature = { ...HV_ON, usable: false, missing: [ "territory_registry_disabled" ] };
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ HV_NO_REGISTRY, VC_BLOCKED ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("vector_control")).not.toBeNull();
+    expect(screen.getAllByText("ligada, falta pré-requisito")).toHaveLength(2);
+    expect(screen.getByText(HOME_VISITS_PHRASE)).not.toBeNull();
+    expect(screen.getByText("cadastro individual e domiciliar (territory_registry) desligado ou incompleto")).not.toBeNull();
+    expect(calls(fetchMock, "mutation SetCityFeature")).toHaveLength(0);
+  });
+
+  it("vigilância ligada: nenhum aviso de simulado", async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(featuresReply([ HV_ON, VC_ON ], { recordMode: "record" })));
+    renderTab();
+
+    expect(await screen.findByText("vector_control")).not.toBeNull();
+    expect(screen.getAllByText("ligada e utilizável")).toHaveLength(2);
+    expect(screen.queryAllByRole("note")).toHaveLength(0);
+    expect(document.body.textContent).not.toMatch(/SIMULADO|undefined|null/);
+  });
+});

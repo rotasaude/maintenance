@@ -416,6 +416,24 @@ a trilha de acesso à identidade ficam (a manifestação é retida por obrigaç�
 legal, ADR 0026). Ordem de deploy: api → dashboard → wpda → maintenance; contra
 um api sem o 33, as chaves só não aparecem.
 
+**Vigilância ambiental de endemias (módulo 35a).** O interruptor
+`vector_control` ("Vigilância ambiental (endemias)") liga, no dashboard, o grupo
+"Endemias" (quarteirões e risco do imóvel, ciclos e cadência, ovitrampas, LIRAa,
+bloqueio de transmissão, amostras, tarefas, produtos e parâmetros, relatórios), o
+boletim do agente de endemias (CBO 515140) na visita do 24b, e o boletim, a
+ovitrampa, o LIRAa e o bloqueio no app de campo. Exige `home_visits` ligada e
+utilizável; sem ela, ou com ela ligada sem o cadastro territorial, a linha diz
+"visita domiciliar e territorial (home_visits) desligada ou incompleta", e a aba
+não liga nem desliga uma pela outra. Existe em todos os ambientes, sem simulado,
+e nunca chega ao cidadão. Desligar esconde as telas e recusa boletim,
+ovitrampa, LIRAa e bloqueio novos (inclusive os que chegam do app); o que foi
+gravado fica, e o bloqueio automático a partir da notificação para. Os papéis
+"Coordenação de endemias" e "Laboratório de entomologia", a unidade "Vigilância
+ambiental e zoonoses", o local de estoque e os produtos são da cidade, no
+dashboard; nenhum dado de cidadão nem endereço de caso passa por aqui. Ordem de
+deploy: api → dashboard → maintenance; contra um api sem o 35a, a chave só não
+aparece.
+
 **Mapas de campo (módulo 24c).** A tela **Mapas de campo**, no trilho, é da
 plataforma: o app de campo trabalha offline com um arquivo de mapa por
 município, recortado de uma base do Brasil (Protomaps, dados do OpenStreetMap).

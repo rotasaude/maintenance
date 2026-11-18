@@ -388,3 +388,17 @@ describe("módulo 24b", () => {
     expect(missingText("ombudsman_disabled")).toBe("ouvidoria do SUS (ombudsman) desligada");
   });
 });
+
+describe("módulo 35a", () => {
+  it("módulo 35a: nome, frase da visita; missing desconhecido cru", () => {
+    expect(featureLabel("vector_control")).toBe("Vigilância ambiental (endemias)");
+    expect(missingText("home_visits_disabled")).toBe("visita domiciliar e territorial (home_visits) desligada ou incompleta");
+    expect(missingText("stock_location_missing")).toBe("stock_location_missing");
+    expect(missingSummary([ "home_visits_disabled" ])).toBe("visita domiciliar e territorial (home_visits) desligada ou incompleta");
+  });
+
+  it("os nomes do 24b não mudam", () => {
+    expect(featureLabel("home_visits")).toBe("Visita domiciliar e territorial");
+    expect(missingText("territory_registry_disabled")).toBe("cadastro individual e domiciliar (territory_registry) desligado ou incompleto");
+  });
+});
